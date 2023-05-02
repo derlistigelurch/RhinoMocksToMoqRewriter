@@ -182,7 +182,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
             }
 
             var identifierName = invocationExpression.ArgumentList.GetFirstArgument().Expression as IdentifierNameSyntax;
-            if (identifierName == null)
+            if (identifierName is null)
             {
                 throw new InvalidOperationException("Node must have an IdentifierName");
             }

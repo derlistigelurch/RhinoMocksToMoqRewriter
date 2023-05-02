@@ -395,7 +395,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
         private static InitializerExpressionSyntax? FormatObjectInitializer(InitializerExpressionSyntax? initializer, string indentation, string newLineCharacter)
         {
-            if (initializer == null)
+            if (initializer is null)
             {
                 return initializer;
             }

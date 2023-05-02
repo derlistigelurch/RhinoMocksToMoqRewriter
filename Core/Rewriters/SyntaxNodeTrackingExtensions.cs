@@ -70,7 +70,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
             }
 
             var originalNode = root.GetOriginalNode(trackedNode, compilationId);
-            if (originalNode == null)
+            if (originalNode is null)
             {
                 return null;
             }

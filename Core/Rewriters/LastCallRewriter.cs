@@ -56,7 +56,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
             {
                 var currentNode = baseCallNode.GetCurrentNode(lastCallExpressionStatement.Node, CompilationId)!;
                 var lastCalledMock = GetLastCalledMockExpressionStatement(baseCallNode, lastCallExpressionStatement);
-                if (lastCalledMock == null)
+                if (lastCalledMock is null)
                 {
                     Console.Error.WriteLine(
                         $"  WARNING: Unable to convert LastCall"

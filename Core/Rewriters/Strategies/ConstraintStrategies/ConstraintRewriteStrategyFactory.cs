@@ -24,7 +24,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters.Strategies.ConstraintStrategies
         public static IConstraintRewriteStrategy GetRewriteStrategy(ExpressionSyntax node, SemanticModel model, RhinoMocksSymbols rhinoMocksSymbols)
         {
             var symbol = model.GetSymbolInfo(node).Symbol;
-            if (symbol == null)
+            if (symbol is null)
             {
                 return DefaultConstraintRewriteStrategy.Instance;
             }

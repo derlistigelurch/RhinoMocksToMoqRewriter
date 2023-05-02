@@ -246,7 +246,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
         public static ExpressionSyntax VerifyExpression(IdentifierNameSyntax identifierName, ExpressionSyntax? expression = null, int? times = null,
             ArgumentSyntax? rhinoMocksMethodOptions = null)
         {
-            var argumentList = expression is null || times == null
+            var argumentList = expression is null || times is null
                 ? null
                 : MoqSyntaxFactory.ArgumentList(
                     new[]
@@ -535,7 +535,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
         public static GenericNameSyntax GenericName(SyntaxToken identifier, TypeArgumentListSyntax? typeArgumentList = null)
         {
-            return typeArgumentList == null
+            return typeArgumentList is null
                 ? SyntaxFactory.GenericName(identifier)
                 : SyntaxFactory.GenericName(identifier, typeArgumentList);
         }
@@ -552,7 +552,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
         public static InvocationExpressionSyntax InvocationExpression(ExpressionSyntax expression, ArgumentListSyntax? argumentList = null)
         {
-            return argumentList == null || argumentList.IsEmpty()
+            return argumentList is null || argumentList.IsEmpty()
                 ? SyntaxFactory.InvocationExpression(expression)
                 : SyntaxFactory.InvocationExpression(expression, argumentList.WithLeadingTrivia(SyntaxFactory.Space));
         }
@@ -691,7 +691,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
         private static ArgumentListSyntax ArgumentList(ArgumentSyntax? argument = null)
         {
-            return argument == null
+            return argument is null
                 ? SyntaxFactory.ArgumentList()
                 : SyntaxFactory.ArgumentList(SyntaxFactory.SingletonSeparatedList(argument));
         }
@@ -728,7 +728,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
         private static ObjectCreationExpressionSyntax ObjectCreationExpression(TypeSyntax type, ArgumentListSyntax? argumentList = null)
         {
-            return argumentList == null || argumentList.IsEmpty()
+            return argumentList is null || argumentList.IsEmpty()
                 ? SyntaxFactory.ObjectCreationExpression(type).WithArgumentList(argumentList)
                 : SyntaxFactory.ObjectCreationExpression(type).WithArgumentList(argumentList).WithLeadingTrivia(SyntaxFactory.Space);
         }

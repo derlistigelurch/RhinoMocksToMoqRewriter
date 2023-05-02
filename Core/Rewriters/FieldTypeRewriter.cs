@@ -33,7 +33,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
         public override SyntaxNode? Visit(SyntaxNode? node)
         {
-            if (node == null)
+            if (node is null)
             {
                 return node;
             }
@@ -61,7 +61,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                 throw new InvalidOperationException("Unable to get FieldSymbol from FieldDeclaration");
             }
 
-            if (_generateMockFieldSymbols == null)
+            if (_generateMockFieldSymbols is null)
             {
                 throw new InvalidOperationException("FieldSymbolList must not be null!");
             }

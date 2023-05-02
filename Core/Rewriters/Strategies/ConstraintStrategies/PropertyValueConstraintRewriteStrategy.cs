@@ -23,7 +23,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters.Strategies.ConstraintStrategies
         {
             var propertyName = (node as InvocationExpressionSyntax)?.ArgumentList.Arguments.First().Expression;
             var propertyValue = (node as InvocationExpressionSyntax)?.ArgumentList.Arguments.Last().Expression;
-            if (propertyName == null || propertyValue == null)
+            if (propertyName is null || propertyValue is null)
             {
                 throw new InvalidOperationException("Unable to get name or value from property");
             }

@@ -109,7 +109,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                 .Select(s => (LambdaExpressionSyntax) s.Expression)
                 .SingleOrDefault();
 
-            if (lambdaExpression == null)
+            if (lambdaExpression is null)
             {
                 return argumentList;
             }
@@ -120,7 +120,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
             }
 
             var methodSymbol = Model.GetSymbolInfo(invocationExpression).Symbol as IMethodSymbol;
-            if (methodSymbol == null)
+            if (methodSymbol is null)
             {
                 return argumentList;
             }

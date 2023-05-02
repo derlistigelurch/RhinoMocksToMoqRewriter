@@ -33,7 +33,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
             var setupResultForMemberAccessExpression = GetSetupResultForExpressionOrDefault(baseCallNode);
 
-            if (setupResultForMemberAccessExpression == null)
+            if (setupResultForMemberAccessExpression is null)
             {
                 return baseCallNode;
             }

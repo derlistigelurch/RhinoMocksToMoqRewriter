@@ -23,7 +23,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters.Strategies.ArgumentStrategies
         public static IArgumentRewriteStrategy GetRewriteStrategy(ArgumentSyntax node, SemanticModel model, RhinoMocksSymbols rhinoMocksSymbols)
         {
             var symbol = model.GetSymbolInfo(node.Expression).Symbol?.OriginalDefinition;
-            if (symbol == null)
+            if (symbol is null)
             {
                 return new DefaultArgumentRewriteStrategy();
             }
