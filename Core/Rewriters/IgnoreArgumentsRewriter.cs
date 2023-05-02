@@ -25,7 +25,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
     {
         public override SyntaxNode? VisitExpressionStatement(ExpressionStatementSyntax node)
         {
-            var baseCallNode = (ExpressionStatementSyntax) base.VisitExpressionStatement(node)!;
+            var baseCallNode = VisitBaseExpressionAs<ExpressionStatementSyntax>(() => base.VisitExpressionStatement(node));
 
             if (!ContainsIgnoreArgumentsMethod(node))
             {
@@ -39,7 +39,10 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
             try
             {
-                var expressionsWithModifiedArgumentLists = rhinoMocksExpressions.Select(s => (s.Name, ConvertArgumentList(s.ArgumentList))).ToList();
+                var expressionsWithModifiedArgumentLists = rhinoMocksExpressions
+                    .Select(s => (s.Name, ConvertArgumentList(s.ArgumentList)))
+                    .ToList();
+
                 return MoqSyntaxFactory.ExpressionStatement(MoqSyntaxFactory.NestedMemberAccessExpression(mockIdentifierName, expressionsWithModifiedArgumentLists))
                     .WithLeadingAndTrailingTriviaOfNode(node);
             }
@@ -59,8 +62,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                 .Where(
                     s => s.ArgumentList.Arguments.Count > 1
                          && Model.GetSymbolInfo(s.Name).Symbol is { } symbol
-                         && (RhinoMocksSymbols.ExpectSymbols.Contains(symbol.OriginalDefinition, SymbolEqualityComparer.Default)
-                             || RhinoMocksSymbols.StubSymbols.Contains(symbol.OriginalDefinition, SymbolEqualityComparer.Default)))
+                         && (IsRhinoMocksMethod(symbol)))
                 .Select(s => (IdentifierNameSyntax) s.ArgumentList.Arguments.First().Expression)
                 .First();
         }
@@ -92,6 +94,12 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                    && (RhinoMocksSymbols.ExpectSymbols.Contains(symbol.ReducedFrom ?? symbol.OriginalDefinition, SymbolEqualityComparer.Default)
                        || RhinoMocksSymbols.StubSymbols.Contains(symbol.ReducedFrom ?? symbol.OriginalDefinition, SymbolEqualityComparer.Default)
                        || RhinoMocksSymbols.AllIMethodOptionsSymbols.Contains(symbol.OriginalDefinition, SymbolEqualityComparer.Default));
+        }
+        
+        private bool IsRhinoMocksMethod(ISymbol symbol)
+        {
+            return RhinoMocksSymbols.ExpectSymbols.Contains(symbol.OriginalDefinition, SymbolEqualityComparer.Default)
+                   || RhinoMocksSymbols.StubSymbols.Contains(symbol.OriginalDefinition, SymbolEqualityComparer.Default);
         }
 
         private ArgumentListSyntax ConvertArgumentList(ArgumentListSyntax argumentList)
