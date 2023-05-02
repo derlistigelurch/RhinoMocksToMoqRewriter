@@ -17,6 +17,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using RhinoMocksToMoqRewriter.Core.Extensions;
+using RhinoMocksToMoqRewriter.Core.Rewriters.Wrapper;
 
 namespace RhinoMocksToMoqRewriter.Core.Rewriters
 {
@@ -25,26 +26,23 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
         public override SyntaxNode? VisitMemberAccessExpression(MemberAccessExpressionSyntax node)
         {
             var trackedNodes = TrackNodes(node);
-            var baseCallNode = (MemberAccessExpressionSyntax) base.VisitMemberAccessExpression(trackedNodes)!;
+            var baseCallNode = VisitBaseExpressionAs<MemberAccessExpressionSyntax>(
+                () => base.VisitMemberAccessExpression(trackedNodes));
 
-            var nameSymbol = Model.GetSymbolInfo(baseCallNode.GetOriginalNode(baseCallNode, CompilationId)!.Name).GetFirstOverloadOrDefault();
-            var typeSymbol = Model.GetTypeInfo(baseCallNode.GetOriginalNode(baseCallNode, CompilationId)!.Expression).Type?.OriginalDefinition;
-            if (!MoqSymbols.GenericMoqSymbol.Equals(typeSymbol, SymbolEqualityComparer.Default))
-            {
-                return baseCallNode;
-            }
+            var nameSymbol = Model.GetSymbolInfo(
+                    baseCallNode.GetOriginalNode(
+                            baseCallNode,
+                            CompilationId)!
+                        .Name)
+                .GetFirstOverloadOrDefault();
 
-            if (MoqSymbols.AllProtectedMockSymbols.Contains((nameSymbol as IMethodSymbol)?.ReducedFrom ?? nameSymbol?.OriginalDefinition, SymbolEqualityComparer.Default))
-            {
-                return baseCallNode;
-            }
+            var typeSymbol = Model.GetTypeInfo(
+                    baseCallNode.GetOriginalNode(
+                            baseCallNode, CompilationId)!
+                        .Expression).Type?
+                .OriginalDefinition;
 
-            if (MoqSymbols.AllMockSequenceSymbols.Contains((nameSymbol as IMethodSymbol)?.ReducedFrom ?? nameSymbol?.OriginalDefinition, SymbolEqualityComparer.Default))
-            {
-                return baseCallNode;
-            }
-
-            if (RhinoMocksSymbols.AllBackToRecordSymbols.Contains((nameSymbol as IMethodSymbol)?.ReducedFrom ?? nameSymbol?.OriginalDefinition, SymbolEqualityComparer.Default))
+            if (CanConvertMemberAccessExpression(typeSymbol, nameSymbol))
             {
                 return baseCallNode;
             }
@@ -81,7 +79,9 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
         {
             var trackedNodes = TrackNodes(node);
 
-            var baseCallNode = (ArgumentSyntax) base.VisitArgument(trackedNodes)!;
+            var baseCallNode = VisitBaseExpressionAs<ArgumentSyntax>(
+                () => base.VisitArgument(trackedNodes));
+
             if (baseCallNode.Expression is not IdentifierNameSyntax identifierName)
             {
                 return baseCallNode;
@@ -99,7 +99,10 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
         public override SyntaxNode? VisitReturnStatement(ReturnStatementSyntax node)
         {
             var trackedNodes = TrackNodes(node);
-            var baseCallNode = (ReturnStatementSyntax) base.VisitReturnStatement(trackedNodes)!;
+
+            var baseCallNode = VisitBaseExpressionAs<ReturnStatementSyntax>(
+                () => base.VisitReturnStatement(trackedNodes));
+
             if (baseCallNode.Expression is not IdentifierNameSyntax identifierName)
             {
                 return baseCallNode;
@@ -118,7 +121,9 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
         {
             var trackedNodes = TrackNodes(node);
 
-            var baseCallNode = (InitializerExpressionSyntax) base.VisitInitializerExpression(trackedNodes)!;
+            var baseCallNode = VisitBaseExpressionAs<InitializerExpressionSyntax>(
+                () => base.VisitInitializerExpression(trackedNodes));
+
             var newExpressions = baseCallNode.Expressions;
             for (var i = 0; i < baseCallNode.Expressions.Count; i++)
             {
@@ -136,17 +141,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
                 try
                 {
-                    if (i == baseCallNode.Expressions.Count - 1)
-                    {
-                        newExpressions = newExpressions.Replace(
-                            expression,
-                            MoqSyntaxFactory.MockObjectExpression(expression.WithoutTrailingTrivia())
-                                .WithTrailingTrivia(expression.GetTrailingTrivia()));
-                    }
-                    else
-                    {
-                        newExpressions = newExpressions.Replace(expression, MoqSyntaxFactory.MockObjectExpression(expression));
-                    }
+                    newExpressions = ReplaceExpressions(i, baseCallNode, newExpressions, expression);
                 }
                 catch (Exception)
                 {
@@ -164,17 +159,20 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
         public override SyntaxNode? VisitAssignmentExpression(AssignmentExpressionSyntax node)
         {
             var trackedNodes = TrackNodes(node);
-            var baseCallNode = (AssignmentExpressionSyntax) base.VisitAssignmentExpression(trackedNodes)!;
+            var baseCallNode = VisitBaseExpressionAs<AssignmentExpressionSyntax>(
+                () => base.VisitAssignmentExpression(trackedNodes));
 
-            if (baseCallNode.Right is not IdentifierNameSyntax and not ObjectCreationExpressionSyntax)
-            {
-                return baseCallNode;
-            }
-
-            INamedTypeSymbol? rightType;
             try
             {
-                rightType = Model.GetTypeInfo(baseCallNode.GetOriginalNode(baseCallNode.Right, CompilationId)!).Type?.BaseType;
+                if (!CanConvertRightNode(node, baseCallNode))
+                {
+                    return baseCallNode;
+                }
+
+                if (CanConvertLeftNode(node, baseCallNode))
+                {
+                    return baseCallNode;
+                }
             }
             catch (Exception)
             {
@@ -182,30 +180,6 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                     $"  WARNING: Unable to insert .Object"
                     + $"\r\n  {node.SyntaxTree.FilePath} at line {node.GetLocation().GetMappedLineSpan().StartLinePosition.Line}");
 
-                return baseCallNode;
-            }
-
-            if (!MoqSymbols.MoqSymbol.Equals(rightType, SymbolEqualityComparer.Default))
-            {
-                return baseCallNode;
-            }
-
-            INamedTypeSymbol? leftType;
-            try
-            {
-                leftType = Model.GetTypeInfo(baseCallNode.GetOriginalNode(baseCallNode.Left, CompilationId)!).Type?.BaseType;
-            }
-            catch (Exception)
-            {
-                Console.Error.WriteLine(
-                    $"  WARNING: Unable to insert .Object"
-                    + $"\r\n  {node.SyntaxTree.FilePath} at line {node.GetLocation().GetMappedLineSpan().StartLinePosition.Line}");
-
-                return baseCallNode;
-            }
-
-            if (MoqSymbols.MoqSymbol.Equals(leftType, SymbolEqualityComparer.Default))
-            {
                 return baseCallNode;
             }
 
@@ -277,7 +251,9 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
         {
             var trackedNodes = TrackNodes(node);
 
-            var baseCallNode = (ParenthesizedLambdaExpressionSyntax) base.VisitParenthesizedLambdaExpression(trackedNodes)!;
+            var baseCallNode = VisitBaseExpressionAs<ParenthesizedLambdaExpressionSyntax>(
+                () => base.VisitParenthesizedLambdaExpression(trackedNodes));
+
             var originalNode = baseCallNode.GetOriginalNode(baseCallNode, CompilationId)!;
             if (originalNode.ExpressionBody is not IdentifierNameSyntax identifierName)
             {
@@ -295,6 +271,32 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                     .WithLeadingAndTrailingTriviaOfNode(identifierName));
         }
 
+        private bool CanConvertMemberAccessExpression(ISymbol? typeSymbol, ISymbol? nameSymbol)
+        {
+            if (!MoqSymbols.GenericMoqSymbol.Equals(typeSymbol, SymbolEqualityComparer.Default))
+            {
+                return true;
+            }
+
+            var extractedSymbol = (nameSymbol as IMethodSymbol)?.ReducedFrom ?? nameSymbol?.OriginalDefinition;
+            if (MoqSymbols.AllProtectedMockSymbols.Contains(extractedSymbol, SymbolEqualityComparer.Default))
+            {
+                return true;
+            }
+
+            if (MoqSymbols.AllMockSequenceSymbols.Contains(extractedSymbol, SymbolEqualityComparer.Default))
+            {
+                return true;
+            }
+
+            if (RhinoMocksSymbols.AllBackToRecordSymbols.Contains(extractedSymbol, SymbolEqualityComparer.Default))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
         private T TrackNodes<T>(T node)
             where T : SyntaxNode
         {
@@ -310,6 +312,52 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                              || s.IsKind(SyntaxKind.VariableDeclarator)
                              || s.IsKind(SyntaxKind.ParenthesizedLambdaExpression)),
                 CompilationId);
+        }
+
+        private static SeparatedSyntaxList<ExpressionSyntax> ReplaceExpressions(
+            SyntaxNodePosition currentExpressionIndex,
+            InitializerExpressionSyntax initializerExpression,
+            SeparatedSyntaxList<ExpressionSyntax> newExpressions,
+            ExpressionSyntax expression)
+        {
+            if (currentExpressionIndex == initializerExpression.Expressions.Count - 1)
+            {
+                return newExpressions.Replace(
+                    expression,
+                    MoqSyntaxFactory.MockObjectExpression(
+                            expression.WithoutTrailingTrivia())
+                        .WithTrailingTrivia(
+                            expression.GetTrailingTrivia()));
+            }
+
+            return newExpressions.Replace(expression, MoqSyntaxFactory.MockObjectExpression(expression));
+        }
+
+        private bool CanConvertLeftNode(AssignmentExpressionSyntax node, AssignmentExpressionSyntax baseCallNode)
+        {
+            var leftType = Model.GetTypeInfo(
+                    baseCallNode.GetOriginalNode(
+                        baseCallNode.Left, CompilationId)!)
+                .Type?
+                .BaseType;
+
+            return MoqSymbols.MoqSymbol.Equals(leftType, SymbolEqualityComparer.Default);
+        }
+
+        private bool CanConvertRightNode(AssignmentExpressionSyntax node, AssignmentExpressionSyntax baseCallNode)
+        {
+            if (baseCallNode.Right is not IdentifierNameSyntax and not ObjectCreationExpressionSyntax)
+            {
+                return false;
+            }
+
+            var rightType = Model.GetTypeInfo(
+                    baseCallNode.GetOriginalNode(
+                        baseCallNode.Right, CompilationId)!)
+                .Type?
+                .BaseType;
+
+            return MoqSymbols.MoqSymbol.Equals(rightType, SymbolEqualityComparer.Default);
         }
     }
 }

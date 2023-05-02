@@ -1,4 +1,4 @@
-﻿//  Copyright (c) rubicon IT GmbH
+//  Copyright (c) rubicon IT GmbH
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"),
 // to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
@@ -11,39 +11,18 @@
 // WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.Editing;
-
-namespace RhinoMocksToMoqRewriter.Core.Rewriters
+namespace RhinoMocksToMoqRewriter.Core.Rewriters.Wrapper
 {
-    public class RewriterBase : CSharpSyntaxRewriter
+    public class SyntaxNodePosition
     {
-        private SemanticModel? _model;
-        private SyntaxGenerator? _generator;
+        public int Index { get; }
 
-        public SemanticModel Model
+        public SyntaxNodePosition(int index)
         {
-            get => _model ?? throw new InvalidOperationException("SemanticModel must not be null!");
-            set => _model = value;
+            Index = index;
         }
 
-        public SyntaxGenerator Generator
-        {
-            get => _generator ?? throw new InvalidOperationException("SyntaxGenerator must not be null!");
-            set => _generator = value;
-        }
-
-        public Guid CompilationId { get; set; }
-
-        public RhinoMocksSymbols RhinoMocksSymbols { get; set; } = null!;
-
-        public MoqSymbols MoqSymbols { get; set; } = null!;
-        
-        protected T VisitBaseExpressionAs<T>(Func<SyntaxNode?> function) where T : SyntaxNode
-        {
-            return (T)function()!;
-        }
+        public static implicit operator SyntaxNodePosition(int index) => new(index);
+        public static implicit operator int(SyntaxNodePosition position) => position.Index;
     }
 }
