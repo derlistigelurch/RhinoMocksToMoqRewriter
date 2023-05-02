@@ -65,7 +65,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
     private static ArgumentListSyntax RemoveRedundantNewLines (string nodeAsString)
     {
       const string redundantNewLinePattern = @"(?<!^)\((\n|\r\n){2,}";
-      var matches = Regex.Matches (nodeAsString, redundantNewLinePattern).Select (s => s.ToString());
+      var matches = Regex.Matches (nodeAsString, redundantNewLinePattern, RegexOptions.None, TimeSpan.FromMilliseconds(100)).Select (s => s.ToString());
       foreach (var match in matches)
       {
         var nodeWithDeletedNewLine = $"{match.First()}{Environment.NewLine}";
@@ -117,14 +117,14 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
     private static string DeleteObsoleteNewLinesBetweenStatements (string nodeAsString)
     {
       const string? pattern = "[^{](\n|\r\n){3,}[^}]";
-      var matches = Regex.Matches (nodeAsString, pattern).Select (m => m.ToString());
+      var matches = Regex.Matches (nodeAsString, pattern, RegexOptions.None, TimeSpan.FromMilliseconds(100)).Select (m => m.ToString());
       return matches.Aggregate (nodeAsString, (current, match) => current.Replace (match, $"{match.First()}{Environment.NewLine}{Environment.NewLine}{match.Last()}"));
     }
 
     private static string DeleteObsoleteNewLinesBeforeCurlyBrackets (string nodeAsString)
     {
       const string? pattern = "(\n|\r\n){2,} *}";
-      var matches = Regex.Matches (nodeAsString, pattern).Select (m => m.ToString());
+      var matches = Regex.Matches (nodeAsString, pattern, RegexOptions.None, TimeSpan.FromMilliseconds(100)).Select (m => m.ToString());
       return matches.Aggregate (
           nodeAsString,
           (current, match) => current
@@ -134,7 +134,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
     private static string DeleteObsoleteNewLinesAfterCurlyBrackets (string nodeAsString)
     {
       const string? pattern = "{(\n|\r\n){2,}";
-      var matches = Regex.Matches (nodeAsString, pattern).Select (m => m.ToString());
+      var matches = Regex.Matches (nodeAsString, pattern, RegexOptions.None, TimeSpan.FromMilliseconds(100)).Select (m => m.ToString());
       return matches.Aggregate (nodeAsString, (current, match) => current.Replace (match, $"{match.First()}{Environment.NewLine}"));
     }
 
@@ -158,7 +158,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
     {
       var nodeAsString = baseCallNode.ToFullString();
       const string? redundantSpaceBetweenParenthesesPattern = @"(?<!^)\w{1} {2,}\(";
-      var matches = Regex.Matches (nodeAsString, redundantSpaceBetweenParenthesesPattern).Select (s => s.ToString());
+      var matches = Regex.Matches (nodeAsString, redundantSpaceBetweenParenthesesPattern, RegexOptions.None, TimeSpan.FromMilliseconds(100)).Select (s => s.ToString());
       foreach (var match in matches)
       {
         var parenthesesWithFormattedWhiteSpace = $"{match.First()} {match.Last()}";
