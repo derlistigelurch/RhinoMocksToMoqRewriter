@@ -11,7 +11,6 @@
 // WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-using System;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -54,17 +53,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
         {
             if (expression is BinaryExpressionSyntax binaryExpression)
             {
-                var left = ConvertExpression(binaryExpression.Left);
-                var right = ConvertExpression(binaryExpression.Right);
-                if (binaryExpression.OperatorToken.IsKind(SyntaxKind.AmpersandToken))
-                {
-                    return MoqSyntaxFactory.LogicalAndBinaryExpression(left, right);
-                }
-
-                if (binaryExpression.OperatorToken.IsKind(SyntaxKind.BarToken))
-                {
-                    return MoqSyntaxFactory.LogicalOrBinaryExpression(left, right);
-                }
+                return CreateBinaryExpression(binaryExpression);
             }
 
             if (expression is not InvocationExpressionSyntax invocationExpression)
@@ -74,6 +63,21 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
             var strategy = ConstraintRewriteStrategyFactory.GetRewriteStrategy(invocationExpression, Model, RhinoMocksSymbols);
             return strategy.Rewrite(invocationExpression);
+        }
+
+        private ExpressionSyntax CreateBinaryExpression(BinaryExpressionSyntax binaryExpression)
+        {
+            var left = ConvertExpression(binaryExpression.Left);
+            var right = ConvertExpression(binaryExpression.Right);
+            if (binaryExpression.OperatorToken.IsKind(SyntaxKind.AmpersandToken))
+            {
+                return MoqSyntaxFactory.LogicalAndBinaryExpression(left, right);
+            }
+
+            binaryExpression.OperatorToken.IsKind(SyntaxKind.BarToken);
+            {
+                return MoqSyntaxFactory.LogicalOrBinaryExpression(left, right);
+            }
         }
     }
 }
