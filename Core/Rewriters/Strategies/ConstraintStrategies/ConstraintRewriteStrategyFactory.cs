@@ -52,9 +52,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters.Strategies.ConstraintStrategies
         {
             if (symbol is null)
             {
-                {
-                    return false;
-                }
+                return false;
             }
 
             if (!IsNotAutomaticallyRewritable(node, symbol, model, rhinoMocksSymbols))

@@ -305,7 +305,7 @@ namespace RhinoMocksToMoqRewriter.Core
             {
                 if (_verifyAllSymbols is null)
                 {
-                    _verifyAllSymbols ??= RhinoMocksMockRepositorySymbol
+                    _verifyAllSymbols = RhinoMocksMockRepositorySymbol
                         .GetMembers("VerifyAll")
                         .ToList()
                         .AsReadOnly();
@@ -517,7 +517,18 @@ namespace RhinoMocksToMoqRewriter.Core
 
         public IReadOnlyList<ISymbol> ArgIsNotEqualSymbols
         {
-            get { return _argIsNotEqualSymbols ??= RhinoMocksConstraintsIsArgSymbol.GetMembers("NotEqual").ToList().AsReadOnly(); }
+            get
+            {
+                if (_argIsNotEqualSymbols is null)
+                {
+                    _argIsNotEqualSymbols = RhinoMocksConstraintsIsArgSymbol
+                        .GetMembers("NotEqual")
+                        .ToList()
+                        .AsReadOnly();
+                }
+
+                return _argIsNotEqualSymbols;
+            }
         }
 
         private IReadOnlyList<ISymbol>? _argIsSameSymbols;
@@ -1443,7 +1454,7 @@ namespace RhinoMocksToMoqRewriter.Core
             {
                 if (_allMockRepositorySymbols is null)
                 {
-                    _allMockRepositorySymbols ??= AllGenerateMockAndStubSymbols
+                    _allMockRepositorySymbols = AllGenerateMockAndStubSymbols
                         .Concat(AllStrictMockSymbols)
                         .Concat(AllPartialMockSymbols)
                         .ToList()
@@ -1462,7 +1473,7 @@ namespace RhinoMocksToMoqRewriter.Core
             {
                 if (_allMockSymbols is null)
                 {
-                    return _allMockSymbols ??= AllStrictMockSymbols
+                    return _allMockSymbols = AllStrictMockSymbols
                         .Concat(AllPartialMockSymbols)
                         .Concat(MockRepositoryDynamicMultiMockSymbols)
                         .Concat(MockRepositoryDynamicMockSymbols)
@@ -1562,7 +1573,6 @@ namespace RhinoMocksToMoqRewriter.Core
                 if (_allCallbackSymbols is null)
                 {
                     _allCallbackSymbols = WhenCalledSymbols
-                        .Concat(WhenCalledSymbols)
                         .Concat(CallbackSymbols)
                         .Concat(DoSymbols)
                         .ToList()

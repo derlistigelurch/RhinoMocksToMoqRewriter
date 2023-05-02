@@ -64,13 +64,18 @@ namespace RhinoMocksToMoqRewriter.Core
         {
             get
             {
-                return _allMoqSetupSymbols ??= GenericMoqSymbol.GetMembers()
+                if(_allMoqSetupSymbols is null)
+                {
+                    _allMoqSetupSymbols = GenericMoqSymbol.GetMembers()
                     .Concat(MoqCallbackSymbol.GetMembers())
                     .Concat(MoqReturnsSymbol.GetMembers())
                     .Concat(MoqVerifiableSymbol.GetMembers())
                     .Concat(MoqProtectedSymbol.GetMembers())
                     .ToList()
                     .AsReadOnly();
+                }
+
+                return _allMoqSetupSymbols;
             }
         }
 
@@ -80,11 +85,16 @@ namespace RhinoMocksToMoqRewriter.Core
         {
             get
             {
-                return _allMockSequenceSymbols ??= GenericMoqSymbol.GetMembers()
+                if(_allMockSequenceSymbols is null)
+                {
+                    _allMockSequenceSymbols = GenericMoqSymbol.GetMembers()
                     .Concat(MoqSymbol.GetMembers())
                     .Concat(MoqSequenceHelperSymbol.GetMembers())
                     .ToList()
                     .AsReadOnly();
+                }
+
+                return _allMockSequenceSymbols;
             }
         }
 
@@ -94,9 +104,16 @@ namespace RhinoMocksToMoqRewriter.Core
         {
             get
             {
-                return _allProtectedMockSymbols ??= MoqProtectedSymbol.GetMembers()
-                    .Concat(MoqProtectedExtensionSymbol.GetMembers())
-                    .ToList().AsReadOnly();
+                if (_allProtectedMockSymbols is null)
+                {
+                    _allProtectedMockSymbols = MoqProtectedSymbol.GetMembers()
+                    .Concat(MoqProtectedExtensionSymbol
+                    .GetMembers())
+                    .ToList()
+                    .AsReadOnly();
+                }
+
+                return _allProtectedMockSymbols;
             }
         }
 

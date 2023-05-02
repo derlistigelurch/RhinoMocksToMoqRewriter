@@ -164,12 +164,12 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
             try
             {
-                if (!CanConvertRightNode(node, baseCallNode))
+                if (!CanConvertRightNode(baseCallNode))
                 {
                     return baseCallNode;
                 }
 
-                if (CanConvertLeftNode(node, baseCallNode))
+                if (CanConvertLeftNode(baseCallNode))
                 {
                     return baseCallNode;
                 }
@@ -333,27 +333,27 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
             return newExpressions.Replace(expression, MoqSyntaxFactory.MockObjectExpression(expression));
         }
 
-        private bool CanConvertLeftNode(AssignmentExpressionSyntax node, AssignmentExpressionSyntax baseCallNode)
+        private bool CanConvertLeftNode(AssignmentExpressionSyntax node)
         {
             var leftType = Model.GetTypeInfo(
-                    baseCallNode.GetOriginalNode(
-                        baseCallNode.Left, CompilationId)!)
+                    node.GetOriginalNode(
+                        node.Left, CompilationId)!)
                 .Type?
                 .BaseType;
 
             return MoqSymbols.MoqSymbol.Equals(leftType, SymbolEqualityComparer.Default);
         }
 
-        private bool CanConvertRightNode(AssignmentExpressionSyntax node, AssignmentExpressionSyntax baseCallNode)
+        private bool CanConvertRightNode(AssignmentExpressionSyntax node)
         {
-            if (baseCallNode.Right is not IdentifierNameSyntax and not ObjectCreationExpressionSyntax)
+            if (node.Right is not IdentifierNameSyntax and not ObjectCreationExpressionSyntax)
             {
                 return false;
             }
 
             var rightType = Model.GetTypeInfo(
-                    baseCallNode.GetOriginalNode(
-                        baseCallNode.Right, CompilationId)!)
+                    node.GetOriginalNode(
+                        node.Right, CompilationId)!)
                 .Type?
                 .BaseType;
 

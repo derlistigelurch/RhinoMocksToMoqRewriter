@@ -74,10 +74,12 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                 return MoqSyntaxFactory.LogicalAndBinaryExpression(left, right);
             }
 
-            binaryExpression.OperatorToken.IsKind(SyntaxKind.BarToken);
+            if(binaryExpression.OperatorToken.IsKind(SyntaxKind.BarToken))
             {
                 return MoqSyntaxFactory.LogicalOrBinaryExpression(left, right);
             }
+
+            return binaryExpression;
         }
     }
 }
