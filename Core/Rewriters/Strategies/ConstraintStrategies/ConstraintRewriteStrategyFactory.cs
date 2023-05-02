@@ -24,17 +24,8 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters.Strategies.ConstraintStrategies
         public static IConstraintRewriteStrategy GetRewriteStrategy(ExpressionSyntax node, SemanticModel model, RhinoMocksSymbols rhinoMocksSymbols)
         {
             var symbol = model.GetSymbolInfo(node).Symbol;
-            if (symbol is null)
+            if (CanConvert(node, model, rhinoMocksSymbols, symbol))
             {
-                return DefaultConstraintRewriteStrategy.Instance;
-            }
-
-            if (IsNotAutomaticallyRewritable(node, symbol, model, rhinoMocksSymbols))
-            {
-                Console.Error.WriteLine(
-                    $"  WARNING: Unable to convert Rhino.Mocks.Constraints.Property.Value or Rhino.Mocks.Constraints.Is.NotNull\r\n"
-                    + $"  {node.SyntaxTree.FilePath} at line {node.GetLocation().GetMappedLineSpan().StartLinePosition.Line}");
-
                 return DefaultConstraintRewriteStrategy.Instance;
             }
 
@@ -55,6 +46,27 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters.Strategies.ConstraintStrategies
                 _ when rhinoMocksSymbols.ConstraintPropertyValueSymbols.Contains(symbol) => PropertyValueConstraintRewriteStrategy.Instance,
                 _ => DefaultConstraintRewriteStrategy.Instance
             };
+        }
+
+        private static bool CanConvert(ExpressionSyntax node, SemanticModel model, RhinoMocksSymbols rhinoMocksSymbols, ISymbol? symbol)
+        {
+            if (symbol is null)
+            {
+                {
+                    return false;
+                }
+            }
+
+            if (!IsNotAutomaticallyRewritable(node, symbol, model, rhinoMocksSymbols))
+            {
+                return true;
+            }
+
+            Console.Error.WriteLine(
+                $"  WARNING: Unable to convert Rhino.Mocks.Constraints.Property.Value or Rhino.Mocks.Constraints.Is.NotNull\r\n"
+                + $"  {node.SyntaxTree.FilePath} at line {node.GetLocation().GetMappedLineSpan().StartLinePosition.Line}");
+
+            return false;
         }
 
         private static bool IsNotAutomaticallyRewritable(ExpressionSyntax node, ISymbol symbol, SemanticModel model, RhinoMocksSymbols rhinoMocksSymbols)
