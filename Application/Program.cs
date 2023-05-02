@@ -47,13 +47,13 @@ namespace RhinoMocksToMoqRewriter.Application
       if (!string.IsNullOrEmpty (opt.SolutionPath))
       {
         var solution = await compilationLoader.LoadSolutionAsync (opt.SolutionPath);
-        return await compilationLoader.LoadCompilationsAsync (solution.Projects);
+        return await CompilationLoader.LoadCompilationsAsync (solution.Projects);
       }
 
       if (!string.IsNullOrEmpty (opt.ProjectPath))
       {
         var project = await compilationLoader.LoadProjectAsync (opt.ProjectPath);
-        return await compilationLoader.LoadCompilationsAsync (new[] { project });
+        return await CompilationLoader.LoadCompilationsAsync (new[] { project });
       }
 
       throw new ArgumentException ("Unable to load documents!");

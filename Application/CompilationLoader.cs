@@ -53,7 +53,7 @@ namespace RhinoMocksToMoqRewriter.Application
       return project;
     }
 
-    public async Task<IReadOnlyList<CSharpCompilation>> LoadCompilationsAsync (IEnumerable<Project> projects)
+    public static async Task<IReadOnlyList<CSharpCompilation>> LoadCompilationsAsync (IEnumerable<Project> projects)
     {
       var allCompilations = await Task
           .WhenAll (projects.Select (async p => await p.GetCompilationAsync()));
