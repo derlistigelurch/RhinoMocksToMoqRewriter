@@ -18,6 +18,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using RhinoMocksToMoqRewriter.Core.Extensions;
+using RhinoMocksToMoqRewriter.Core.Rewriters.Wrapper;
 
 namespace RhinoMocksToMoqRewriter.Core.Rewriters
 {
@@ -38,15 +39,10 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                 return node;
             }
 
-            if (trackedNodes is null)
-            {
-                return node;
-            }
-
-            var baseCallNode = (BlockSyntax) base.VisitBlock(trackedNodes)!;
+            var baseCallNode = VisitBaseExpressionAs<BlockSyntax>(() => base.VisitBlock(trackedNodes));
 
             var lastCallExpressionStatementsInBlock = GetLastCallExpressionStatementsInBlock(baseCallNode).ToList();
-            if (lastCallExpressionStatementsInBlock.Count == 0)
+            if (!lastCallExpressionStatementsInBlock.Any())
             {
                 return baseCallNode;
             }
@@ -75,19 +71,16 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
             return baseCallNode;
         }
 
-        private IEnumerable<(ExpressionStatementSyntax Node, int Index)> GetLastCallExpressionStatementsInBlock(BlockSyntax node)
+        private IEnumerable<SyntaxNodeWithIndex<ExpressionStatementSyntax>> GetLastCallExpressionStatementsInBlock(BlockSyntax node)
         {
             return node.Statements
                 .Where(s => s.IsKind(SyntaxKind.ExpressionStatement))
                 .Select(s => (ExpressionStatementSyntax) s)
-                .Select((syntaxNode, index) => new {node = syntaxNode, index})
-                .Where(
-                    s => Model.GetSymbolInfo(node.GetOriginalNode(s.node, CompilationId)!.Expression).Symbol is { } symbol
-                         && RhinoMocksSymbols.RhinoMocksLastCallSymbol.Equals(symbol.OriginalDefinition.ContainingSymbol, SymbolEqualityComparer.Default))
-                .Select(s => (s.node, s.index));
+                .Select((syntaxNode, index) => new SyntaxNodeWithIndex<ExpressionStatementSyntax>(syntaxNode, index))
+                .Where(IsLastCallMock);
         }
 
-        private ExpressionStatementSyntax? GetLastCalledMockExpressionStatement(BlockSyntax node, (ExpressionStatementSyntax Node, int Index) lastCallExpressionStatement)
+        private ExpressionStatementSyntax? GetLastCalledMockExpressionStatement(BlockSyntax node, SyntaxNodeWithIndex<ExpressionStatementSyntax> lastCallExpressionStatement)
         {
             var reachableAndContainedMockSymbols = GetReachableAndContainedMockSymbols(node);
             var lastCalledExpressions = node.Statements.Where(s => s is ExpressionStatementSyntax {Expression: InvocationExpressionSyntax}).ToList();
@@ -137,11 +130,26 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                 .Select(s => (ExpressionStatementSyntax) s)
                 .Where(s => s.Expression.IsKind(SyntaxKind.SimpleAssignmentExpression))
                 .Select(s => (AssignmentExpressionSyntax) s.Expression)
-                .Where(
-                    s => Model.GetSymbolInfo(s.Right).Symbol is { } symbol
-                         && RhinoMocksSymbols.RhinoMocksMockRepositorySymbol.Equals(symbol.OriginalDefinition.ContainingSymbol, SymbolEqualityComparer.Default))
+                .Where(WasCreatedWithRhinoMocks)
                 .Select(s => Model.GetSymbolInfo(s.Left).Symbol)
                 .Where(s => s is not null)!;
+        }
+
+        private bool WasCreatedWithRhinoMocks(AssignmentExpressionSyntax node)
+        {
+            return Model.GetSymbolAs<ISymbol>(node.Right) is { } symbol
+                   && RhinoMocksSymbols
+                       .RhinoMocksMockRepositorySymbol
+                       .Equals(
+                           symbol.OriginalDefinition.ContainingSymbol,
+                           SymbolEqualityComparer.Default);
+        }
+
+        private bool IsLastCallMock(SyntaxNodeWithIndex<ExpressionStatementSyntax> nodeWithIndex)
+        {
+            return Model.GetSymbolAs<ISymbol>(nodeWithIndex.Node.GetOriginalNode(nodeWithIndex.Node, CompilationId)!.Expression) is { } symbol
+                   && RhinoMocksSymbols.RhinoMocksLastCallSymbol.Equals(symbol.OriginalDefinition.ContainingSymbol, SymbolEqualityComparer.Default);
+
         }
 
         private IEnumerable<ISymbol> GetAllMockFieldDeclarations(BlockSyntax node)
