@@ -11,15 +11,37 @@
 // WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using System;
 using Microsoft.CodeAnalysis;
 
 namespace RhinoMocksToMoqRewriter.Core.Extensions
 {
     public static class SemanticModelExtensions
     {
-        public static T GetSymbolAs<T>(this SemanticModel model, SyntaxNode node) where T : ISymbol
+        public static T? GetSymbolAs<T>(this SemanticModel model, SyntaxNode node) where T : ISymbol
         {
-            return (T)model.GetSymbolInfo(node).Symbol!;
+            try
+            {
+                return (T?)model.GetSymbolInfo(node).Symbol;
+            }
+            catch
+            {
+                return default;
+            }
+        }
+        
+        public static bool TryGetSymbolAs<T>(this SemanticModel model, SyntaxNode node, out T? symbol) where T : ISymbol
+        {
+            try
+            {
+                symbol = (T?)model.GetSymbolInfo(node).Symbol;
+                return true;
+            }
+            catch
+            {
+                symbol = default;
+                return false;
+            }
         }
     }
 }

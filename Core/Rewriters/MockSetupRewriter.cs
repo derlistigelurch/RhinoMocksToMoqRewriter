@@ -42,12 +42,39 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                 () => base.VisitExpressionStatement(trackedNodes));
 
             var originalNode = baseCallNode.GetOriginalNode(baseCallNode, CompilationId)!;
+            
+            return ConvertExpressionStatement(originalNode, baseCallNode, node);
+        }
 
+        private SyntaxNode ConvertExpressionStatement(
+            ExpressionStatementSyntax originalNode,
+            ExpressionStatementSyntax baseCallNode,
+            ExpressionStatementSyntax untouchedNode)
+        {
             if (CanConvertExpressionStatement(originalNode))
             {
                 return baseCallNode;
             }
+            
+            baseCallNode = ConvertNode(originalNode, baseCallNode);
 
+            if (untouchedNode.IsEquivalentTo(baseCallNode, false))
+            {
+                return baseCallNode.WithLeadingAndTrailingTriviaOfNode(untouchedNode);
+            }
+
+            return _formatter.Format(
+                    baseCallNode.WithExpression(
+                        baseCallNode
+                            .WithLeadingTrivia(untouchedNode.GetLeadingTrivia())
+                            .WithTrailingTrivia(SyntaxFactory.Whitespace(Environment.NewLine))
+                            .Expression))
+                .WithAdditionalAnnotations(
+                    baseCallNode.GetAnnotations(new[] {"Id", MoqSyntaxFactory.VerifyAnnotationKind}));
+        }
+
+        private ExpressionStatementSyntax ConvertNode(ExpressionStatementSyntax originalNode, ExpressionStatementSyntax baseCallNode)
+        {
             if (NeedsProtectedExpression(originalNode))
             {
                 baseCallNode = baseCallNode.WithExpression(
@@ -65,19 +92,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                 baseCallNode = baseCallNode.WithAdditionalAnnotations(CreateAnnotation(originalNode, baseCallNode));
             }
 
-            if (node.IsEquivalentTo(baseCallNode, false))
-            {
-                return baseCallNode.WithLeadingAndTrailingTriviaOfNode(node);
-            }
-
-            return _formatter.Format(
-                    baseCallNode.WithExpression(
-                        baseCallNode
-                            .WithLeadingTrivia(node.GetLeadingTrivia())
-                            .WithTrailingTrivia(SyntaxFactory.Whitespace(Environment.NewLine))
-                            .Expression))
-                .WithAdditionalAnnotations(
-                    baseCallNode.GetAnnotations(new[] {"Id", MoqSyntaxFactory.VerifyAnnotationKind}));
+            return baseCallNode;
         }
 
         private bool CanConvertExpressionStatement(ExpressionStatementSyntax node)
@@ -270,15 +285,21 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
         private SyntaxNode? ConvertMemberAccessExpression(MemberAccessExpressionSyntax node)
         {
-            var symbol = Model.GetSymbolInfo(node.GetOriginalNode(node, CompilationId)!.Name).Symbol;
-            if (symbol is not IMethodSymbol methodSymbol)
+            var originalNodeName = node.GetOriginalNode(node, CompilationId)!.Name;
+            if (Model.TryGetSymbolAs<IMethodSymbol>(originalNodeName, out var methodSymbol))
             {
-                return RhinoMocksSymbols.RhinoMocksIRepeatSymbol.Equals(symbol?.OriginalDefinition, SymbolEqualityComparer.Default)
-                    ? node.Expression
-                    : node;
+                return ConvertMemberAccessExpression(node, methodSymbol!);
             }
+            
+            var symbol = Model.GetSymbolAs<ISymbol>(originalNodeName);
+            return RhinoMocksSymbols.RhinoMocksIRepeatSymbol.Equals(symbol?.OriginalDefinition, SymbolEqualityComparer.Default)
+                ? node.Expression
+                : node;
+        }
 
-            return symbol switch
+        private SyntaxNode? ConvertMemberAccessExpression(MemberAccessExpressionSyntax node, IMethodSymbol methodSymbol)
+        {
+            return methodSymbol switch
             {
                 _ when RhinoMocksSymbols.ExpectSymbols.Contains(methodSymbol?.ReducedFrom, SymbolEqualityComparer.Default)
                     => node.WithName(RewriteSetup(node)).WithLeadingAndTrailingTriviaOfNode(node.Name),
@@ -290,7 +311,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                     => node.WithName(MoqSyntaxFactory.ReturnsIdentifierName).WithLeadingAndTrailingTriviaOfNode(node.Name),
                 _ when RhinoMocksSymbols.ThrowSymbols.Contains(methodSymbol?.OriginalDefinition, SymbolEqualityComparer.Default)
                     => node.WithName(MoqSyntaxFactory.ThrowsIdentifierName).WithLeadingAndTrailingTriviaOfNode(node.Name),
-                _ when RhinoMocksSymbols.AllIRepeatSymbols.Contains(symbol?.OriginalDefinition, SymbolEqualityComparer.Default)
+                _ when RhinoMocksSymbols.AllIRepeatSymbols.Contains(methodSymbol?.OriginalDefinition, SymbolEqualityComparer.Default)
                     => node.Expression,
                 _ => node
             };
