@@ -13,10 +13,11 @@
 
 using System;
 using Microsoft.CodeAnalysis;
+
 namespace RhinoMocksToMoqRewriter.Core.Rewriters
 {
-  public interface IFormatter
-  {
-    public T Format<T> (T node) where T : SyntaxNode;
-  }
+    public interface IFormatter
+    {
+        public T Format<T>(T node) where T : SyntaxNode;
+    }
 }

@@ -14,15 +14,16 @@
 using System;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using RhinoMocksToMoqRewriter.Core.Extensions;
+
 namespace RhinoMocksToMoqRewriter.Core.Rewriters.Strategies.ConstraintStrategies
 {
-  public class IsNotSameConstraintRewriteStrategy : BaseConstraintRewriteStrategy<IsNotSameConstraintRewriteStrategy>
-  {
-    public override ExpressionSyntax Rewrite (ExpressionSyntax node)
+    public class IsNotSameConstraintRewriteStrategy : BaseConstraintRewriteStrategy<IsNotSameConstraintRewriteStrategy>
     {
-      return Formatter.MarkWithFormatAnnotation (
-              MoqSyntaxFactory.Not (MoqSyntaxFactory.ReferenceEquals (node.GetFirstArgument().Expression)))
-          .WithLeadingAndTrailingTriviaOfNode (node);
+        public override ExpressionSyntax Rewrite(ExpressionSyntax node)
+        {
+            return Formatter.MarkWithFormatAnnotation(
+                    MoqSyntaxFactory.Not(MoqSyntaxFactory.ReferenceEquals(node.GetFirstArgument().Expression)))
+                .WithLeadingAndTrailingTriviaOfNode(node);
+        }
     }
-  }
 }

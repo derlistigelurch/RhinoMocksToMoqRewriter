@@ -19,12 +19,12 @@ using RhinoMocksToMoqRewriter.Core.Rewriters;
 
 namespace RhinoMocksToMoqRewriter.Core.Extensions
 {
-  public static class SyntaxTreeExtensions
-  {
-    public static bool ContainsRhinoMocksUsingDirective (this SyntaxTree thisSyntaxTree)
+    public static class SyntaxTreeExtensions
     {
-      var rhinoMocksUsing = MoqSyntaxFactory.RhinoMocksUsing();
-      return thisSyntaxTree.GetRoot().DescendantNodes().Where (s => s.IsKind (SyntaxKind.UsingDirective)).Any (s => s.IsEquivalentTo (rhinoMocksUsing, false));
+        public static bool ContainsRhinoMocksUsingDirective(this SyntaxTree thisSyntaxTree)
+        {
+            var rhinoMocksUsing = MoqSyntaxFactory.RhinoMocksUsing();
+            return thisSyntaxTree.GetRoot().DescendantNodes().Where(s => s.IsKind(SyntaxKind.UsingDirective)).Any(s => s.IsEquivalentTo(rhinoMocksUsing, false));
+        }
     }
-  }
 }

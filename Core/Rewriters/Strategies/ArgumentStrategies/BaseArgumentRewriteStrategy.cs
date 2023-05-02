@@ -16,13 +16,13 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace RhinoMocksToMoqRewriter.Core.Rewriters.Strategies.ArgumentStrategies
 {
-  public abstract class BaseArgumentRewriteStrategy<T> : IArgumentRewriteStrategy
-      where T : new()
-  {
-    private static readonly Lazy<T> s_instance = new (() => new T());
+    public abstract class BaseArgumentRewriteStrategy<T> : IArgumentRewriteStrategy
+        where T : new()
+    {
+        private static readonly Lazy<T> s_instance = new(() => new T());
 
-    public static T Instance => s_instance.Value;
+        public static T Instance => s_instance.Value;
 
-    public abstract ArgumentSyntax Rewrite (ArgumentSyntax node);
-  }
+        public abstract ArgumentSyntax Rewrite(ArgumentSyntax node);
+    }
 }

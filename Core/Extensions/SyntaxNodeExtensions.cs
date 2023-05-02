@@ -20,124 +20,124 @@ using Microsoft.VisualBasic;
 
 namespace RhinoMocksToMoqRewriter.Core.Extensions
 {
-  public static class SyntaxNodeExtensions
-  {
-    private const string c_carriageReturnLineFeed = "\r\n";
-    private const string c_lineFeed = "\n";
-    private const string c_whiteSpace = " ";
-
-    public static string GetLeadingWhiteSpaces (this SyntaxNode node)
+    public static class SyntaxNodeExtensions
     {
-      if (!node.HasLeadingTrivia)
-      {
-        return string.Empty;
-      }
+        private const string c_carriageReturnLineFeed = "\r\n";
+        private const string c_lineFeed = "\n";
+        private const string c_whiteSpace = " ";
 
-      var numberOfSpaces = node.GetLeadingTrivia().ToString().Count (c => c.ToString() == c_whiteSpace);
-      return Strings.Space (numberOfSpaces);
+        public static string GetLeadingWhiteSpaces(this SyntaxNode node)
+        {
+            if (!node.HasLeadingTrivia)
+            {
+                return string.Empty;
+            }
+
+            var numberOfSpaces = node.GetLeadingTrivia().ToString().Count(c => c.ToString() == c_whiteSpace);
+            return Strings.Space(numberOfSpaces);
+        }
+
+        public static TypeArgumentListSyntax GetTypeArgumentList(this SyntaxNode node)
+        {
+            return node.GetTypeArgumentListOrDefault() ?? throw new InvalidOperationException("Node must have an TypeArgumentList");
+        }
+
+        public static TypeArgumentListSyntax? GetTypeArgumentListOrDefault(this SyntaxNode node)
+        {
+            return node.DescendantNodes().FirstOrDefault(
+                s => s.IsKind(SyntaxKind.TypeArgumentList) && s.Parent.IsKind(SyntaxKind.GenericName)) as TypeArgumentListSyntax;
+        }
+
+        public static LambdaExpressionSyntax GetLambdaExpression(this SyntaxNode node)
+        {
+            return node.GetLambdaExpressionOrDefault() ?? throw new InvalidOperationException("Node must contain a LambdaExpression");
+        }
+
+        public static LambdaExpressionSyntax? GetLambdaExpressionOrDefault(this SyntaxNode node)
+        {
+            return node.DescendantNodes().FirstOrDefault(
+                s => s.IsKind(SyntaxKind.SimpleLambdaExpression)) as LambdaExpressionSyntax;
+        }
+
+        public static ArgumentSyntax GetFirstArgument(this SyntaxNode node)
+        {
+            return node.GetFirstArgumentOrDefault() ?? throw new InvalidOperationException("Node must have an Argument");
+        }
+
+        public static ArgumentSyntax? GetFirstArgumentOrDefault(this SyntaxNode node)
+        {
+            return node.DescendantNodes()
+                .FirstOrDefault(s => s.IsKind(SyntaxKind.Argument)) as ArgumentSyntax;
+        }
+
+        public static MemberAccessExpressionSyntax? GetFirstAncestorMemberAccessExpressionOrDefault(this ArgumentListSyntax node)
+        {
+            var invocationExpressionNode = node.Ancestors()
+                .FirstOrDefault(s => s.IsKind(SyntaxKind.InvocationExpression)) as InvocationExpressionSyntax;
+
+            return invocationExpressionNode?.DescendantNodes()
+                .FirstOrDefault(s => s.IsKind(SyntaxKind.SimpleMemberAccessExpression)) as MemberAccessExpressionSyntax;
+        }
+
+        public static IdentifierNameSyntax GetFirstIdentifierName(this SyntaxNode node)
+        {
+            return node.GetFirstIdentifierNameOrDefault() ?? throw new InvalidOperationException("Node must have an IdentifierName");
+        }
+
+        public static IdentifierNameSyntax? GetFirstIdentifierNameOrDefault(this SyntaxNode node)
+        {
+            var identifierName = node.DescendantNodes()
+                .FirstOrDefault(s => s.IsKind(SyntaxKind.IdentifierName)) as IdentifierNameSyntax;
+
+            return identifierName;
+        }
+
+        public static GenericNameSyntax? GetFirstGenericNameOrDefault(this SyntaxNode node)
+        {
+            return node.DescendantNodes().FirstOrDefault(s => s.IsKind(SyntaxKind.GenericName)) as GenericNameSyntax;
+        }
+
+        public static T WithLeadingAndTrailingTriviaOfNode<T>(this T node, SyntaxNode triviaNode)
+            where T : SyntaxNode
+        {
+            return node.WithLeadingTrivia(triviaNode.GetLeadingTrivia())
+                .WithTrailingTrivia(triviaNode.GetTrailingTrivia());
+        }
+
+        public static string GetNewLineCharacter(this SyntaxNode node)
+        {
+            if (node is null)
+            {
+                return string.Empty;
+            }
+
+            var nodeAsString = node.ToString().Split("(");
+            if (node.ToString().Split("(").Length < 2)
+            {
+                return string.Empty;
+            }
+
+            if (nodeAsString[1].Contains(c_carriageReturnLineFeed))
+            {
+                return c_carriageReturnLineFeed;
+            }
+
+            if (nodeAsString[1].Contains(c_lineFeed))
+            {
+                return c_lineFeed;
+            }
+
+            return string.Empty;
+        }
+
+        public static string GetIndentation(this SyntaxNode node)
+        {
+            var nodeAsString = node.ToFullString();
+            return string.Join(
+                "",
+                nodeAsString.Select((c, index) => nodeAsString[index..].TakeWhile(e => e.ToString() == c_whiteSpace))
+                    .OrderByDescending(e => e.Count())
+                    .First());
+        }
     }
-
-    public static TypeArgumentListSyntax GetTypeArgumentList (this SyntaxNode node)
-    {
-      return node.GetTypeArgumentListOrDefault() ?? throw new InvalidOperationException ("Node must have an TypeArgumentList");
-    }
-
-    public static TypeArgumentListSyntax? GetTypeArgumentListOrDefault (this SyntaxNode node)
-    {
-      return node.DescendantNodes().FirstOrDefault (
-          s => s.IsKind (SyntaxKind.TypeArgumentList) && s.Parent.IsKind (SyntaxKind.GenericName)) as TypeArgumentListSyntax;
-    }
-
-    public static LambdaExpressionSyntax GetLambdaExpression (this SyntaxNode node)
-    {
-      return node.GetLambdaExpressionOrDefault() ?? throw new InvalidOperationException ("Node must contain a LambdaExpression");
-    }
-
-    public static LambdaExpressionSyntax? GetLambdaExpressionOrDefault (this SyntaxNode node)
-    {
-      return node.DescendantNodes().FirstOrDefault (
-          s => s.IsKind (SyntaxKind.SimpleLambdaExpression)) as LambdaExpressionSyntax;
-    }
-
-    public static ArgumentSyntax GetFirstArgument (this SyntaxNode node)
-    {
-      return node.GetFirstArgumentOrDefault() ?? throw new InvalidOperationException ("Node must have an Argument");
-    }
-
-    public static ArgumentSyntax? GetFirstArgumentOrDefault (this SyntaxNode node)
-    {
-      return node.DescendantNodes()
-          .FirstOrDefault (s => s.IsKind (SyntaxKind.Argument)) as ArgumentSyntax;
-    }
-
-    public static MemberAccessExpressionSyntax? GetFirstAncestorMemberAccessExpressionOrDefault (this ArgumentListSyntax node)
-    {
-      var invocationExpressionNode = node.Ancestors()
-          .FirstOrDefault (s => s.IsKind (SyntaxKind.InvocationExpression)) as InvocationExpressionSyntax;
-
-      return invocationExpressionNode?.DescendantNodes()
-          .FirstOrDefault (s => s.IsKind (SyntaxKind.SimpleMemberAccessExpression)) as MemberAccessExpressionSyntax;
-    }
-
-    public static IdentifierNameSyntax GetFirstIdentifierName (this SyntaxNode node)
-    {
-      return node.GetFirstIdentifierNameOrDefault() ?? throw new InvalidOperationException ("Node must have an IdentifierName");
-    }
-
-    public static IdentifierNameSyntax? GetFirstIdentifierNameOrDefault (this SyntaxNode node)
-    {
-      var identifierName = node.DescendantNodes()
-          .FirstOrDefault (s => s.IsKind (SyntaxKind.IdentifierName)) as IdentifierNameSyntax;
-
-      return identifierName;
-    }
-
-    public static GenericNameSyntax? GetFirstGenericNameOrDefault (this SyntaxNode node)
-    {
-      return node.DescendantNodes().FirstOrDefault (s => s.IsKind (SyntaxKind.GenericName)) as GenericNameSyntax;
-    }
-
-    public static T WithLeadingAndTrailingTriviaOfNode<T> (this T node, SyntaxNode triviaNode)
-        where T : SyntaxNode
-    {
-      return node.WithLeadingTrivia (triviaNode.GetLeadingTrivia())
-          .WithTrailingTrivia (triviaNode.GetTrailingTrivia());
-    }
-
-    public static string GetNewLineCharacter (this SyntaxNode node)
-    {
-      if (node is null)
-      {
-        return string.Empty;
-      }
-
-      var nodeAsString = node.ToString().Split ("(");
-      if (node.ToString().Split ("(").Length < 2)
-      {
-        return string.Empty;
-      }
-
-      if (nodeAsString[1].Contains (c_carriageReturnLineFeed))
-      {
-        return c_carriageReturnLineFeed;
-      }
-
-      if (nodeAsString[1].Contains (c_lineFeed))
-      {
-        return c_lineFeed;
-      }
-
-      return string.Empty;
-    }
-
-    public static string GetIndentation (this SyntaxNode node)
-    {
-      var nodeAsString = node.ToFullString();
-      return string.Join (
-          "",
-          nodeAsString.Select ((c, index) => nodeAsString[index..].TakeWhile (e => e.ToString() == c_whiteSpace))
-              .OrderByDescending (e => e.Count())
-              .First());
-    }
-  }
 }

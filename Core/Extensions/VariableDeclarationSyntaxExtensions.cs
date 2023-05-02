@@ -16,48 +16,48 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace RhinoMocksToMoqRewriter.Core.Extensions
 {
-  public static class VariableDeclarationSyntaxExtensions
-  {
-    private const string c_carriageReturnLineFeed = "\r\n";
-    private const string c_lineFeed = "\n";
-    private const string c_whiteSpace = " ";
-
-    public static string GetNewLineCharacter (this VariableDeclarationSyntax variableDeclaration)
+    public static class VariableDeclarationSyntaxExtensions
     {
-      if (variableDeclaration.ToString().Contains (c_carriageReturnLineFeed))
-      {
-        return c_carriageReturnLineFeed;
-      }
+        private const string c_carriageReturnLineFeed = "\r\n";
+        private const string c_lineFeed = "\n";
+        private const string c_whiteSpace = " ";
 
-      if (variableDeclaration.ToString().Contains (c_lineFeed))
-      {
-        return c_lineFeed;
-      }
-
-      return string.Empty;
-    }
-
-    public static string GetIndentation (this VariableDeclarationSyntax variableDeclaration)
-    {
-      if (variableDeclaration.Variables.Count == 0)
-      {
-        return string.Empty;
-      }
-
-      if (variableDeclaration.Variables.Count == 1)
-      {
-        return variableDeclaration.Variables.First().GetLeadingTrivia().ToString();
-      }
-
-      foreach (var variable in variableDeclaration.Variables)
-      {
-        if (variable.HasLeadingTrivia && !string.IsNullOrEmpty (variable.GetLeadingWhiteSpaces()))
+        public static string GetNewLineCharacter(this VariableDeclarationSyntax variableDeclaration)
         {
-          return variable.GetLeadingTrivia().ToString();
-        }
-      }
+            if (variableDeclaration.ToString().Contains(c_carriageReturnLineFeed))
+            {
+                return c_carriageReturnLineFeed;
+            }
 
-      return c_whiteSpace;
+            if (variableDeclaration.ToString().Contains(c_lineFeed))
+            {
+                return c_lineFeed;
+            }
+
+            return string.Empty;
+        }
+
+        public static string GetIndentation(this VariableDeclarationSyntax variableDeclaration)
+        {
+            if (variableDeclaration.Variables.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            if (variableDeclaration.Variables.Count == 1)
+            {
+                return variableDeclaration.Variables.First().GetLeadingTrivia().ToString();
+            }
+
+            foreach (var variable in variableDeclaration.Variables)
+            {
+                if (variable.HasLeadingTrivia && !string.IsNullOrEmpty(variable.GetLeadingWhiteSpaces()))
+                {
+                    return variable.GetLeadingTrivia().ToString();
+                }
+            }
+
+            return c_whiteSpace;
+        }
     }
-  }
 }

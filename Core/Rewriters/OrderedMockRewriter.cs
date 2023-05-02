@@ -22,117 +22,117 @@ using RhinoMocksToMoqRewriter.Core.Extensions;
 
 namespace RhinoMocksToMoqRewriter.Core.Rewriters
 {
-  public class OrderedMockRewriter : RewriterBase
-  {
-    public override SyntaxNode? VisitMethodDeclaration (MethodDeclarationSyntax node)
+    public class OrderedMockRewriter : RewriterBase
     {
-      MethodDeclarationSyntax treeWithTrackedNodes;
-      try
-      {
-        treeWithTrackedNodes = node.TrackNodes (node.DescendantNodesAndSelf(), CompilationId);
-      }
-      catch (Exception)
-      {
-        Console.Error.WriteLine (
-            $"  WARNING: Unable to convert node\r\n"
-            + $"  {node.SyntaxTree.FilePath} at line {node.GetLocation().GetMappedLineSpan().StartLinePosition.Line}");
-        return node;
-      }
-
-      var usingStatements = GetRhinoMocksOrderedUsingStatements (treeWithTrackedNodes).ToList();
-      for (var i = 0; i < usingStatements.Count; i++)
-      {
-        var usingStatement = usingStatements[i];
-        var trackedUsingStatement = treeWithTrackedNodes.GetCurrentNode (usingStatement, CompilationId);
-        int? index = usingStatements.Count == 1 ? null : i + 1;
-        var statements = ReplaceExpressionStatements (((BlockSyntax) usingStatement.Statement).Statements, index);
-
-        try
+        public override SyntaxNode? VisitMethodDeclaration(MethodDeclarationSyntax node)
         {
-          treeWithTrackedNodes = treeWithTrackedNodes.ReplaceNode (trackedUsingStatement!, statements);
+            MethodDeclarationSyntax treeWithTrackedNodes;
+            try
+            {
+                treeWithTrackedNodes = node.TrackNodes(node.DescendantNodesAndSelf(), CompilationId);
+            }
+            catch (Exception)
+            {
+                Console.Error.WriteLine(
+                    $"  WARNING: Unable to convert node\r\n"
+                    + $"  {node.SyntaxTree.FilePath} at line {node.GetLocation().GetMappedLineSpan().StartLinePosition.Line}");
+                return node;
+            }
+
+            var usingStatements = GetRhinoMocksOrderedUsingStatements(treeWithTrackedNodes).ToList();
+            for (var i = 0; i < usingStatements.Count; i++)
+            {
+                var usingStatement = usingStatements[i];
+                var trackedUsingStatement = treeWithTrackedNodes.GetCurrentNode(usingStatement, CompilationId);
+                int? index = usingStatements.Count == 1 ? null : i + 1;
+                var statements = ReplaceExpressionStatements(((BlockSyntax) usingStatement.Statement).Statements, index);
+
+                try
+                {
+                    treeWithTrackedNodes = treeWithTrackedNodes.ReplaceNode(trackedUsingStatement!, statements);
+                }
+                catch (Exception)
+                {
+                    treeWithTrackedNodes = treeWithTrackedNodes.ReplaceNode(trackedUsingStatement!.Parent!, statements);
+                }
+            }
+
+            return treeWithTrackedNodes;
         }
-        catch (Exception)
+
+        private IEnumerable<SyntaxNode> ReplaceExpressionStatements(SyntaxList<StatementSyntax> statements, int? index)
         {
-          treeWithTrackedNodes = treeWithTrackedNodes.ReplaceNode (trackedUsingStatement!.Parent!, statements);
+            var nodesToBeReplaced = GetAllMoqExpressionStatements(statements).ToList();
+            var parentTrivia = statements.First().Parent?.Parent?.GetLeadingTrivia();
+            var parentTriviaWithoutNewLine = parentTrivia.ToString()!.Replace(Environment.NewLine, "");
+            SyntaxTriviaList memberAccessExpressionTriviaWithoutNewLine;
+
+            try
+            {
+                memberAccessExpressionTriviaWithoutNewLine = ((MemberAccessExpressionSyntax) nodesToBeReplaced.First()
+                        .DescendantNodes()
+                        .First(s => s.IsKind(SyntaxKind.SimpleMemberAccessExpression)))
+                    .Expression
+                    .GetTrailingTrivia();
+            }
+            catch (InvalidOperationException)
+            {
+                memberAccessExpressionTriviaWithoutNewLine = SyntaxTriviaList.Empty;
+            }
+
+            for (var i = 0; i < statements.Count; i++)
+            {
+                var statement = statements[i];
+                if (!nodesToBeReplaced.Any(s => s.IsEquivalentTo(statement, false)))
+                {
+                    statements = statements.Replace(statement, statement.WithLeadingTrivia(parentTrivia));
+                    continue;
+                }
+
+                var firstIdentifierName = statement.GetFirstIdentifierName();
+                var newExpressionStatement = (ExpressionStatementSyntax) statement.ReplaceNode(
+                    firstIdentifierName,
+                    MoqSyntaxFactory.InSequenceExpression(
+                        firstIdentifierName,
+                        index,
+                        memberAccessExpressionTriviaWithoutNewLine));
+
+                statements = statements.Replace(
+                    statement,
+                    newExpressionStatement
+                        .WithLeadingTrivia(SyntaxFactory.Whitespace(parentTriviaWithoutNewLine))
+                        .WithTrailingTrivia(SyntaxFactory.Whitespace(Environment.NewLine)));
+            }
+
+            statements = statements.Insert(
+                0,
+                MoqSyntaxFactory.MockSequenceLocalDeclarationStatement(index)
+                    .WithLeadingTrivia(parentTrivia)
+                    .WithTrailingTrivia(SyntaxFactory.Whitespace(Environment.NewLine)));
+
+            return statements;
         }
-      }
 
-      return treeWithTrackedNodes;
-    }
+        private IEnumerable<ExpressionStatementSyntax> GetAllMoqExpressionStatements(SyntaxList<StatementSyntax> statements)
+        {
+            return statements
+                .Where(s => s.IsKind(SyntaxKind.ExpressionStatement))
+                .Select(s => (ExpressionStatementSyntax) s)
+                .Where(
+                    s => Model.GetSymbolInfo(s.Expression).Symbol?.OriginalDefinition is IMethodSymbol symbol
+                         && MoqSymbols.AllMoqSetupSymbols.Contains(symbol, SymbolEqualityComparer.Default));
+        }
 
-    private IEnumerable<SyntaxNode> ReplaceExpressionStatements (SyntaxList<StatementSyntax> statements, int? index)
-    {
-      var nodesToBeReplaced = GetAllMoqExpressionStatements (statements).ToList();
-      var parentTrivia = statements.First().Parent?.Parent?.GetLeadingTrivia();
-      var parentTriviaWithoutNewLine = parentTrivia.ToString()!.Replace (Environment.NewLine, "");
-      SyntaxTriviaList memberAccessExpressionTriviaWithoutNewLine;
-
-      try
-      {
-        memberAccessExpressionTriviaWithoutNewLine = ((MemberAccessExpressionSyntax) nodesToBeReplaced.First()
+        private IEnumerable<UsingStatementSyntax> GetRhinoMocksOrderedUsingStatements(MethodDeclarationSyntax node)
+        {
+            return node
+                .GetOriginalNode(node, CompilationId)!
                 .DescendantNodes()
-                .First (s => s.IsKind (SyntaxKind.SimpleMemberAccessExpression)))
-            .Expression
-            .GetTrailingTrivia();
-      }
-      catch (InvalidOperationException)
-      {
-        memberAccessExpressionTriviaWithoutNewLine = SyntaxTriviaList.Empty;
-      }
-
-      for (var i = 0; i < statements.Count; i++)
-      {
-        var statement = statements[i];
-        if (!nodesToBeReplaced.Any (s => s.IsEquivalentTo (statement, false)))
-        {
-          statements = statements.Replace (statement, statement.WithLeadingTrivia (parentTrivia));
-          continue;
+                .Where(s => s.IsKind(SyntaxKind.UsingStatement))
+                .Select(s => (UsingStatementSyntax) s)
+                .Where(
+                    s => s.Expression is InvocationExpressionSyntax invocationExpression
+                         && RhinoMocksSymbols.OrderedSymbols.Contains(Model.GetSymbolInfo(invocationExpression).Symbol, SymbolEqualityComparer.Default));
         }
-
-        var firstIdentifierName = statement.GetFirstIdentifierName();
-        var newExpressionStatement = (ExpressionStatementSyntax) statement.ReplaceNode (
-            firstIdentifierName,
-            MoqSyntaxFactory.InSequenceExpression (
-                firstIdentifierName,
-                index,
-                memberAccessExpressionTriviaWithoutNewLine));
-
-        statements = statements.Replace (
-            statement,
-            newExpressionStatement
-                .WithLeadingTrivia (SyntaxFactory.Whitespace (parentTriviaWithoutNewLine))
-                .WithTrailingTrivia (SyntaxFactory.Whitespace (Environment.NewLine)));
-      }
-
-      statements = statements.Insert (
-          0,
-          MoqSyntaxFactory.MockSequenceLocalDeclarationStatement (index)
-              .WithLeadingTrivia (parentTrivia)
-              .WithTrailingTrivia (SyntaxFactory.Whitespace (Environment.NewLine)));
-
-      return statements;
     }
-
-    private IEnumerable<ExpressionStatementSyntax> GetAllMoqExpressionStatements (SyntaxList<StatementSyntax> statements)
-    {
-      return statements
-          .Where (s => s.IsKind (SyntaxKind.ExpressionStatement))
-          .Select (s => (ExpressionStatementSyntax) s)
-          .Where (
-              s => Model.GetSymbolInfo (s.Expression).Symbol?.OriginalDefinition is IMethodSymbol symbol
-                   && MoqSymbols.AllMoqSetupSymbols.Contains (symbol, SymbolEqualityComparer.Default));
-    }
-
-    private IEnumerable<UsingStatementSyntax> GetRhinoMocksOrderedUsingStatements (MethodDeclarationSyntax node)
-    {
-      return node
-          .GetOriginalNode(node, CompilationId)!
-          .DescendantNodes()
-          .Where (s => s.IsKind (SyntaxKind.UsingStatement))
-          .Select (s => (UsingStatementSyntax) s)
-          .Where (
-              s => s.Expression is InvocationExpressionSyntax invocationExpression
-                   && RhinoMocksSymbols.OrderedSymbols.Contains (Model.GetSymbolInfo (invocationExpression).Symbol, SymbolEqualityComparer.Default));
-    }
-  }
 }

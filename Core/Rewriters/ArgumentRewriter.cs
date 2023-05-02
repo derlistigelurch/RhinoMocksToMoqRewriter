@@ -20,14 +20,14 @@ using RhinoMocksToMoqRewriter.Core.Rewriters.Strategies.ArgumentStrategies;
 
 namespace RhinoMocksToMoqRewriter.Core.Rewriters
 {
-  public class ArgumentRewriter : RewriterBase
-  {
-    public override SyntaxNode? VisitArgument (ArgumentSyntax node)
+    public class ArgumentRewriter : RewriterBase
     {
-      var trackedNodes = node.TrackNodes (node.DescendantNodesAndSelf().Where (s => s.IsKind (SyntaxKind.Argument)), CompilationId);
-      var baseCallNode = (ArgumentSyntax) base.VisitArgument (trackedNodes)!;
-      var strategy = ArgumentRewriteStrategyFactory.GetRewriteStrategy (baseCallNode.GetOriginalNode (baseCallNode, CompilationId)!, Model, RhinoMocksSymbols);
-      return baseCallNode.WithExpression (strategy.Rewrite (baseCallNode).Expression);
+        public override SyntaxNode? VisitArgument(ArgumentSyntax node)
+        {
+            var trackedNodes = node.TrackNodes(node.DescendantNodesAndSelf().Where(s => s.IsKind(SyntaxKind.Argument)), CompilationId);
+            var baseCallNode = (ArgumentSyntax) base.VisitArgument(trackedNodes)!;
+            var strategy = ArgumentRewriteStrategyFactory.GetRewriteStrategy(baseCallNode.GetOriginalNode(baseCallNode, CompilationId)!, Model, RhinoMocksSymbols);
+            return baseCallNode.WithExpression(strategy.Rewrite(baseCallNode).Expression);
+        }
     }
-  }
 }

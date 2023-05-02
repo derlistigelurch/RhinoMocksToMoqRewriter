@@ -20,91 +20,91 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace RhinoMocksToMoqRewriter.Core.Rewriters
 {
-  public class ObsoleteMethodRewriter : RewriterBase
-  {
-    private readonly IFormatter _formatter;
-
-    public ObsoleteMethodRewriter (IFormatter formatter)
+    public class ObsoleteMethodRewriter : RewriterBase
     {
-      _formatter = formatter;
+        private readonly IFormatter _formatter;
+
+        public ObsoleteMethodRewriter(IFormatter formatter)
+        {
+            _formatter = formatter;
+        }
+
+        public override SyntaxNode? VisitMethodDeclaration(MethodDeclarationSyntax node)
+        {
+            MethodDeclarationSyntax trackedNodes = null!;
+            try
+            {
+                trackedNodes = node.TrackNodes(node.DescendantNodesAndSelf(), CompilationId);
+            }
+            catch (Exception)
+            {
+                Console.Error.WriteLine(
+                    $"  WARNING: Unable to convert node\r\n"
+                    + $"  {node.SyntaxTree.FilePath} at line {node.GetLocation().GetMappedLineSpan().StartLinePosition.Line}");
+                return node;
+            }
+
+            List<SyntaxNode> nodesToBeReplaced = GetNodesToBeReplaced(trackedNodes).ToList();
+
+            foreach (var nodeToBeReplaced in nodesToBeReplaced)
+            {
+                var currentNode = trackedNodes!.GetCurrentNode(nodeToBeReplaced!, CompilationId)!;
+                trackedNodes = trackedNodes!.RemoveNode(
+                    currentNode,
+                    nodeToBeReplaced.GetLeadingTrivia().ToFullString().Contains(Environment.NewLine)
+                        ? SyntaxRemoveOptions.KeepEndOfLine
+                        : SyntaxRemoveOptions.KeepNoTrivia)!;
+            }
+
+            return _formatter.Format(trackedNodes!);
+        }
+
+        public override SyntaxNode? VisitFieldDeclaration(FieldDeclarationSyntax node)
+        {
+            var mockRepositoryTypeSymbol = ModelExtensions.GetSymbolInfo(Model, node.Declaration.Type).Symbol;
+            return RhinoMocksSymbols.RhinoMocksMockRepositorySymbol.Equals(mockRepositoryTypeSymbol, SymbolEqualityComparer.Default)
+                ? null
+                : node;
+        }
+
+        private IEnumerable<SyntaxNode> GetNodesToBeReplaced(MethodDeclarationSyntax node)
+        {
+            return GetObsoleteExpressionStatements(node)
+                .Concat(GetObsoleteLocalDeclarationStatements(node))
+                .Concat(GetObsoleteAssignmentExpressions(node));
+        }
+
+        private IEnumerable<ExpressionStatementSyntax> GetObsoleteAssignmentExpressions(MethodDeclarationSyntax node)
+        {
+            return node.DescendantNodes()
+                .Select(s => node.GetOriginalNode(s, CompilationId)!)
+                .Where(s => s.IsKind(SyntaxKind.ExpressionStatement))
+                .Select(s => (ExpressionStatementSyntax) s)
+                .Where(s => s.Expression.IsKind(SyntaxKind.SimpleAssignmentExpression))
+                .Where(
+                    s => s.Expression is AssignmentExpressionSyntax assignmentExpression
+                         && RhinoMocksSymbols.RhinoMocksMockRepositorySymbol.Equals(Model.GetTypeInfo(assignmentExpression).Type, SymbolEqualityComparer.Default));
+        }
+
+        private IEnumerable<SyntaxNode> GetObsoleteLocalDeclarationStatements(MethodDeclarationSyntax node)
+        {
+            return node.DescendantNodes()
+                .Select(s => node.GetOriginalNode(s, CompilationId)!)
+                .Where(s => s.IsKind(SyntaxKind.LocalDeclarationStatement))
+                .Select(s => (LocalDeclarationStatementSyntax) s)
+                .Where(s => RhinoMocksSymbols.RhinoMocksMockRepositorySymbol.Equals(Model.GetSymbolInfo(s.Declaration.Type).Symbol, SymbolEqualityComparer.Default));
+        }
+
+        private IEnumerable<SyntaxNode> GetObsoleteExpressionStatements(MethodDeclarationSyntax node)
+        {
+            return node.DescendantNodes()
+                .Select(s => node.GetOriginalNode(s, CompilationId)!)
+                .Where(s => s.IsKind(SyntaxKind.ExpressionStatement))
+                .Select(s => (ExpressionStatementSyntax) s)
+                .Where(
+                    s => s.Expression is InvocationExpressionSyntax invocationExpression
+                         && Model.GetSymbolInfo(invocationExpression).Symbol is IMethodSymbol methodSymbol
+                         && RhinoMocksSymbols.ObsoleteRhinoMocksSymbols.Contains(methodSymbol.ReducedFrom ?? methodSymbol.OriginalDefinition, SymbolEqualityComparer.Default));
+        }
     }
-
-    public override SyntaxNode? VisitMethodDeclaration (MethodDeclarationSyntax node)
-    {
-      MethodDeclarationSyntax trackedNodes = null!;
-      try
-      {
-        trackedNodes = node.TrackNodes (node.DescendantNodesAndSelf(), CompilationId);
-      }
-      catch (Exception)
-      {
-        Console.Error.WriteLine (
-            $"  WARNING: Unable to convert node\r\n"
-            + $"  {node.SyntaxTree.FilePath} at line {node.GetLocation().GetMappedLineSpan().StartLinePosition.Line}");
-        return node;
-      }
-
-      List<SyntaxNode> nodesToBeReplaced = GetNodesToBeReplaced (trackedNodes).ToList();
-
-      foreach (var nodeToBeReplaced in nodesToBeReplaced)
-      {
-        var currentNode = trackedNodes!.GetCurrentNode (nodeToBeReplaced!, CompilationId)!;
-        trackedNodes = trackedNodes!.RemoveNode (
-            currentNode,
-            nodeToBeReplaced.GetLeadingTrivia().ToFullString().Contains (Environment.NewLine)
-                ? SyntaxRemoveOptions.KeepEndOfLine
-                : SyntaxRemoveOptions.KeepNoTrivia)!;
-      }
-
-      return _formatter.Format (trackedNodes!);
-    }
-
-    public override SyntaxNode? VisitFieldDeclaration (FieldDeclarationSyntax node)
-    {
-      var mockRepositoryTypeSymbol = ModelExtensions.GetSymbolInfo (Model, node.Declaration.Type).Symbol;
-      return RhinoMocksSymbols.RhinoMocksMockRepositorySymbol.Equals (mockRepositoryTypeSymbol, SymbolEqualityComparer.Default)
-          ? null
-          : node;
-    }
-
-    private IEnumerable<SyntaxNode> GetNodesToBeReplaced (MethodDeclarationSyntax node)
-    {
-      return GetObsoleteExpressionStatements (node)
-          .Concat (GetObsoleteLocalDeclarationStatements (node))
-          .Concat (GetObsoleteAssignmentExpressions (node));
-    }
-
-    private IEnumerable<ExpressionStatementSyntax> GetObsoleteAssignmentExpressions (MethodDeclarationSyntax node)
-    {
-      return node.DescendantNodes()
-          .Select (s => node.GetOriginalNode (s, CompilationId)!)
-          .Where (s => s.IsKind (SyntaxKind.ExpressionStatement))
-          .Select (s => (ExpressionStatementSyntax) s)
-          .Where (s => s.Expression.IsKind (SyntaxKind.SimpleAssignmentExpression))
-          .Where (
-              s => s.Expression is AssignmentExpressionSyntax assignmentExpression
-                   && RhinoMocksSymbols.RhinoMocksMockRepositorySymbol.Equals (Model.GetTypeInfo (assignmentExpression).Type, SymbolEqualityComparer.Default));
-    }
-
-    private IEnumerable<SyntaxNode> GetObsoleteLocalDeclarationStatements (MethodDeclarationSyntax node)
-    {
-      return node.DescendantNodes()
-          .Select (s => node.GetOriginalNode (s, CompilationId)!)
-          .Where (s => s.IsKind (SyntaxKind.LocalDeclarationStatement))
-          .Select (s => (LocalDeclarationStatementSyntax) s)
-          .Where (s => RhinoMocksSymbols.RhinoMocksMockRepositorySymbol.Equals (Model.GetSymbolInfo (s.Declaration.Type).Symbol, SymbolEqualityComparer.Default));
-    }
-
-    private IEnumerable<SyntaxNode> GetObsoleteExpressionStatements (MethodDeclarationSyntax node)
-    {
-      return node.DescendantNodes()
-          .Select (s => node.GetOriginalNode (s, CompilationId)!)
-          .Where (s => s.IsKind (SyntaxKind.ExpressionStatement))
-          .Select (s => (ExpressionStatementSyntax) s)
-          .Where (
-              s => s.Expression is InvocationExpressionSyntax invocationExpression
-                   && Model.GetSymbolInfo (invocationExpression).Symbol is IMethodSymbol methodSymbol
-                   && RhinoMocksSymbols.ObsoleteRhinoMocksSymbols.Contains (methodSymbol.ReducedFrom ?? methodSymbol.OriginalDefinition, SymbolEqualityComparer.Default));
-    }
-  }
 }

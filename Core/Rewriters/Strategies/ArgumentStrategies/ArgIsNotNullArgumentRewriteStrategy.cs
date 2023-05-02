@@ -17,12 +17,12 @@ using RhinoMocksToMoqRewriter.Core.Extensions;
 
 namespace RhinoMocksToMoqRewriter.Core.Rewriters.Strategies.ArgumentStrategies
 {
-  public class ArgIsNotNullArgumentRewriteStrategy : BaseArgumentRewriteStrategy<ArgIsNotNullArgumentRewriteStrategy>
-  {
-    public override ArgumentSyntax Rewrite (ArgumentSyntax node)
+    public class ArgIsNotNullArgumentRewriteStrategy : BaseArgumentRewriteStrategy<ArgIsNotNullArgumentRewriteStrategy>
     {
-      return Formatter.MarkWithFormatAnnotation (MoqSyntaxFactory.IsNotNullArgument (node.GetTypeArgumentList()))
-          .WithLeadingAndTrailingTriviaOfNode (node);
+        public override ArgumentSyntax Rewrite(ArgumentSyntax node)
+        {
+            return Formatter.MarkWithFormatAnnotation(MoqSyntaxFactory.IsNotNullArgument(node.GetTypeArgumentList()))
+                .WithLeadingAndTrailingTriviaOfNode(node);
+        }
     }
-  }
 }

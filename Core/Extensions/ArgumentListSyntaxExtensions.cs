@@ -16,46 +16,46 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace RhinoMocksToMoqRewriter.Core.Extensions
 {
-  public static class ArgumentListSyntaxExtensions
-  {
-    private const string c_whiteSpace = " ";
-
-    public static bool IsEmpty (this ArgumentListSyntax? argumentList)
+    public static class ArgumentListSyntaxExtensions
     {
-      return argumentList is null || argumentList.Arguments.Count == 0;
-    }
+        private const string c_whiteSpace = " ";
 
-    public static bool IsSingleArgumentList (this ArgumentListSyntax? argumentList)
-    {
-      return argumentList is null || argumentList?.Arguments.Count == 1;
-    }
-
-    public static string GetIndentation (this ArgumentListSyntax? argumentList)
-    {
-      if (argumentList is null)
-      {
-        return string.Empty;
-      }
-
-      if (argumentList.IsEmpty())
-      {
-        return string.Empty;
-      }
-
-      if (argumentList.IsSingleArgumentList())
-      {
-        return argumentList.Arguments.First().GetLeadingTrivia().ToString();
-      }
-
-      foreach (var argument in argumentList.Arguments)
-      {
-        if (argument.HasLeadingTrivia && !string.IsNullOrEmpty (argument.GetLeadingWhiteSpaces()))
+        public static bool IsEmpty(this ArgumentListSyntax? argumentList)
         {
-          return argument.GetLeadingTrivia().ToString();
+            return argumentList is null || argumentList.Arguments.Count == 0;
         }
-      }
 
-      return c_whiteSpace;
+        public static bool IsSingleArgumentList(this ArgumentListSyntax? argumentList)
+        {
+            return argumentList is null || argumentList?.Arguments.Count == 1;
+        }
+
+        public static string GetIndentation(this ArgumentListSyntax? argumentList)
+        {
+            if (argumentList is null)
+            {
+                return string.Empty;
+            }
+
+            if (argumentList.IsEmpty())
+            {
+                return string.Empty;
+            }
+
+            if (argumentList.IsSingleArgumentList())
+            {
+                return argumentList.Arguments.First().GetLeadingTrivia().ToString();
+            }
+
+            foreach (var argument in argumentList.Arguments)
+            {
+                if (argument.HasLeadingTrivia && !string.IsNullOrEmpty(argument.GetLeadingWhiteSpaces()))
+                {
+                    return argument.GetLeadingTrivia().ToString();
+                }
+            }
+
+            return c_whiteSpace;
+        }
     }
-  }
 }

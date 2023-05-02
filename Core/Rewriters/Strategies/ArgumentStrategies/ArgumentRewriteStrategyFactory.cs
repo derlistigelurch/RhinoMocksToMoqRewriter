@@ -18,37 +18,37 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace RhinoMocksToMoqRewriter.Core.Rewriters.Strategies.ArgumentStrategies
 {
-  public static class ArgumentRewriteStrategyFactory
-  {
-    public static IArgumentRewriteStrategy GetRewriteStrategy (ArgumentSyntax node, SemanticModel model, RhinoMocksSymbols rhinoMocksSymbols)
+    public static class ArgumentRewriteStrategyFactory
     {
-      var symbol = model.GetSymbolInfo (node.Expression).Symbol?.OriginalDefinition;
-      if (symbol == null)
-      {
-        return new DefaultArgumentRewriteStrategy();
-      }
+        public static IArgumentRewriteStrategy GetRewriteStrategy(ArgumentSyntax node, SemanticModel model, RhinoMocksSymbols rhinoMocksSymbols)
+        {
+            var symbol = model.GetSymbolInfo(node.Expression).Symbol?.OriginalDefinition;
+            if (symbol == null)
+            {
+                return new DefaultArgumentRewriteStrategy();
+            }
 
-      return symbol switch
-      {
-          var s when rhinoMocksSymbols.ArgIsSymbols.Contains (s) => ArgIsArgumentRewriteStrategy.Instance,
-          var s when rhinoMocksSymbols.ArgListEqualSymbols.Contains (s) => ArgListEqualArgumentRewriteStrategy.Instance,
-          var s when rhinoMocksSymbols.ArgListIsInSymbols.Contains (s) => ArgListIsInArgumentRewriteStrategy.Instance,
-          var s when rhinoMocksSymbols.ArgListContainsAll.Contains (s) => ArgListContainsAllArgumentRewriteStrategy.Instance,
-          var s when rhinoMocksSymbols.ArgMatchesSymbols.Contains (s) => ArgMatchesArgumentRewriteStrategy.Instance,
-          var s when rhinoMocksSymbols.ArgIsAnythingSymbols.Contains (s) => ArgIsAnythingArgumentRewriteStrategy.Instance,
-          var s when rhinoMocksSymbols.ArgIsEqualSymbols.Contains (s) => ArgIsArgumentRewriteStrategy.Instance,
-          var s when rhinoMocksSymbols.ArgIsNotEqualSymbols.Contains (s) => ArgIsNotEqualArgumentRewriteStrategy.Instance,
-          var s when rhinoMocksSymbols.ArgIsSameSymbols.Contains (s) => ArgIsArgumentRewriteStrategy.Instance,
-          var s when rhinoMocksSymbols.ArgIsNotSameSymbols.Contains (s) => ArgIsNotSameArgumentRewriteStrategy.Instance,
-          var s when rhinoMocksSymbols.ArgIsNullSymbols.Contains (s) => ArgIsNullArgumentRewriteStrategy.Instance,
-          var s when rhinoMocksSymbols.ArgIsNotNullSymbols.Contains (s) => ArgIsNotNullArgumentRewriteStrategy.Instance,
-          var s when rhinoMocksSymbols.ArgIsGreaterThanSymbols.Contains (s) => ArgIsGreaterThanArgumentRewriteStrategy.Instance,
-          var s when rhinoMocksSymbols.ArgIsGreaterThanOrEqualSymbols.Contains (s) => ArgIsGreaterThanOrEqualArgumentRewriteStrategy.Instance,
-          var s when rhinoMocksSymbols.ArgIsLessThanSymbols.Contains (s) => ArgIsLessThanArgumentRewriteStrategy.Instance,
-          var s when rhinoMocksSymbols.ArgIsLessThaOrEqualSymbols.Contains (s) => ArgIsLessThanOrEqualArgumentRewriteStrategy.Instance,
-          var s when rhinoMocksSymbols.ArgTextLikeSymbols.Contains (s) => ArgIsArgumentRewriteStrategy.Instance,
-          _ => DefaultArgumentRewriteStrategy.Instance
-      };
+            return symbol switch
+            {
+                var s when rhinoMocksSymbols.ArgIsSymbols.Contains(s) => ArgIsArgumentRewriteStrategy.Instance,
+                var s when rhinoMocksSymbols.ArgListEqualSymbols.Contains(s) => ArgListEqualArgumentRewriteStrategy.Instance,
+                var s when rhinoMocksSymbols.ArgListIsInSymbols.Contains(s) => ArgListIsInArgumentRewriteStrategy.Instance,
+                var s when rhinoMocksSymbols.ArgListContainsAll.Contains(s) => ArgListContainsAllArgumentRewriteStrategy.Instance,
+                var s when rhinoMocksSymbols.ArgMatchesSymbols.Contains(s) => ArgMatchesArgumentRewriteStrategy.Instance,
+                var s when rhinoMocksSymbols.ArgIsAnythingSymbols.Contains(s) => ArgIsAnythingArgumentRewriteStrategy.Instance,
+                var s when rhinoMocksSymbols.ArgIsEqualSymbols.Contains(s) => ArgIsArgumentRewriteStrategy.Instance,
+                var s when rhinoMocksSymbols.ArgIsNotEqualSymbols.Contains(s) => ArgIsNotEqualArgumentRewriteStrategy.Instance,
+                var s when rhinoMocksSymbols.ArgIsSameSymbols.Contains(s) => ArgIsArgumentRewriteStrategy.Instance,
+                var s when rhinoMocksSymbols.ArgIsNotSameSymbols.Contains(s) => ArgIsNotSameArgumentRewriteStrategy.Instance,
+                var s when rhinoMocksSymbols.ArgIsNullSymbols.Contains(s) => ArgIsNullArgumentRewriteStrategy.Instance,
+                var s when rhinoMocksSymbols.ArgIsNotNullSymbols.Contains(s) => ArgIsNotNullArgumentRewriteStrategy.Instance,
+                var s when rhinoMocksSymbols.ArgIsGreaterThanSymbols.Contains(s) => ArgIsGreaterThanArgumentRewriteStrategy.Instance,
+                var s when rhinoMocksSymbols.ArgIsGreaterThanOrEqualSymbols.Contains(s) => ArgIsGreaterThanOrEqualArgumentRewriteStrategy.Instance,
+                var s when rhinoMocksSymbols.ArgIsLessThanSymbols.Contains(s) => ArgIsLessThanArgumentRewriteStrategy.Instance,
+                var s when rhinoMocksSymbols.ArgIsLessThaOrEqualSymbols.Contains(s) => ArgIsLessThanOrEqualArgumentRewriteStrategy.Instance,
+                var s when rhinoMocksSymbols.ArgTextLikeSymbols.Contains(s) => ArgIsArgumentRewriteStrategy.Instance,
+                _ => DefaultArgumentRewriteStrategy.Instance
+            };
+        }
     }
-  }
 }

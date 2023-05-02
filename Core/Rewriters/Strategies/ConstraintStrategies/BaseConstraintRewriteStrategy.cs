@@ -13,15 +13,16 @@
 
 using System;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+
 namespace RhinoMocksToMoqRewriter.Core.Rewriters.Strategies.ConstraintStrategies
 {
-  public abstract class BaseConstraintRewriteStrategy<T> : IConstraintRewriteStrategy
-      where T : new()
-  {
-    private static readonly Lazy<T> s_instance = new (() => new T());
+    public abstract class BaseConstraintRewriteStrategy<T> : IConstraintRewriteStrategy
+        where T : new()
+    {
+        private static readonly Lazy<T> s_instance = new(() => new T());
 
-    public static T Instance => s_instance.Value;
+        public static T Instance => s_instance.Value;
 
-    public abstract ExpressionSyntax Rewrite (ExpressionSyntax node);
-  }
+        public abstract ExpressionSyntax Rewrite(ExpressionSyntax node);
+    }
 }

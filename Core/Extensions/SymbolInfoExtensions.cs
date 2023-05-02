@@ -10,26 +10,28 @@
 // FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
 // WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
+
 using System;
 using System.Linq;
 using Microsoft.CodeAnalysis;
+
 namespace RhinoMocksToMoqRewriter.Core.Extensions
 {
-  public static class SymbolInfoExtensions
-  {
-    public static ISymbol? GetFirstOverloadOrDefault (this SymbolInfo symbolInfo)
+    public static class SymbolInfoExtensions
     {
-      if (symbolInfo.Symbol != null)
-      {
-        return symbolInfo.Symbol;
-      }
+        public static ISymbol? GetFirstOverloadOrDefault(this SymbolInfo symbolInfo)
+        {
+            if (symbolInfo.Symbol != null)
+            {
+                return symbolInfo.Symbol;
+            }
 
-      if (symbolInfo.CandidateReason == CandidateReason.OverloadResolutionFailure)
-      {
-        return symbolInfo.CandidateSymbols.FirstOrDefault();
-      }
+            if (symbolInfo.CandidateReason == CandidateReason.OverloadResolutionFailure)
+            {
+                return symbolInfo.CandidateSymbols.FirstOrDefault();
+            }
 
-      return null;
+            return null;
+        }
     }
-  }
 }
