@@ -29,7 +29,7 @@ namespace RhinoMocksToMoqRewriter.Core
         private static IFormatter Formatter { get; } = new Formatter();
 
         private static readonly List<RewriterBase> s_rewriters =
-            new List<RewriterBase>
+            new()
             {
                 new LastCallRewriter(),
                 new SetupResultForRewriter(),
@@ -57,36 +57,61 @@ namespace RhinoMocksToMoqRewriter.Core
                 var currentCompilation = compilation;
                 var rhinoMocksSymbols = new RhinoMocksSymbols(currentCompilation);
                 var moqSymbols = new MoqSymbols(currentCompilation);
-                foreach (var syntaxTree in compilation.SyntaxTrees.Where(s => s.ContainsRhinoMocksUsingDirective()))
-                {
-                    await Console.Error.WriteLineAsync($"- {syntaxTree.FilePath}");
-                    var currentTree = syntaxTree;
-                    foreach (var rewriter in s_rewriters)
-                    {
-                        var model = currentCompilation.GetSemanticModel(currentTree);
-                        rewriter.Model = model;
-                        rewriter.CompilationId = Guid.NewGuid();
-                        rewriter.Generator = generator;
-                        rewriter.RhinoMocksSymbols ??= rhinoMocksSymbols;
-                        rewriter.MoqSymbols ??= moqSymbols;     
-
-                        var newRoot = rewriter.Visit(await currentTree.GetRootAsync());
-                        var newTree = currentTree.WithRootAndOptions(newRoot, currentTree.Options);
-
-                        currentCompilation = currentCompilation.ReplaceSyntaxTreeAndUpdateCompilation(currentTree, newTree);
-                        currentTree = newTree;
-                    }
-
-                    if (currentTree != syntaxTree)
-                    {
-                        syntaxTrees.Add(Rewriters.Formatter.FormatAnnotatedNodes(currentTree, workspace));
-                    }
-
-                    SyntaxNodeTrackingExtensions.ClearLookup();
-                }
+                syntaxTrees = (await RewriteAsync(generator, workspace, compilation, rhinoMocksSymbols, moqSymbols, syntaxTrees)).ToList();
             }
 
             await WriteBackChangesAsync(syntaxTrees);
+        }
+
+        private static async Task<IEnumerable<SyntaxTree>> RewriteAsync(
+            SyntaxGenerator generator,
+            Workspace workspace,
+            CSharpCompilation compilation,
+            RhinoMocksSymbols rhinoMocksSymbols,
+            MoqSymbols moqSymbols,
+            List<SyntaxTree> syntaxTrees)
+        {
+            foreach (var syntaxTree in compilation.SyntaxTrees.Where(s => s.ContainsRhinoMocksUsingDirective()))
+            {
+                await Console.Error.WriteLineAsync($"- {syntaxTree.FilePath}");
+                var currentTree = syntaxTree;
+                currentTree = await RewriteAsync(generator, compilation, rhinoMocksSymbols, moqSymbols, currentTree);
+
+                if (currentTree != syntaxTree)
+                {
+                    syntaxTrees.Add(Rewriters.Formatter.FormatAnnotatedNodes(currentTree, workspace));
+                }
+                
+                SyntaxNodeTrackingExtensions.ClearLookup();
+            }
+
+            return syntaxTrees;
+        }
+
+        private static async Task<SyntaxTree> RewriteAsync(
+            SyntaxGenerator generator,
+            CSharpCompilation currentCompilation,
+            RhinoMocksSymbols rhinoMocksSymbols, 
+            MoqSymbols moqSymbols,
+            SyntaxTree syntaxTree)
+        {
+            foreach (var rewriter in s_rewriters)
+            {
+                var model = currentCompilation.GetSemanticModel(syntaxTree);
+                rewriter.Model = model;
+                rewriter.CompilationId = Guid.NewGuid();
+                rewriter.Generator = generator;
+                rewriter.RhinoMocksSymbols ??= rhinoMocksSymbols;
+                rewriter.MoqSymbols ??= moqSymbols;
+
+                var newRoot = rewriter.Visit(await syntaxTree.GetRootAsync());
+                var newTree = syntaxTree.WithRootAndOptions(newRoot, syntaxTree.Options);
+
+                currentCompilation = currentCompilation.ReplaceSyntaxTreeAndUpdateCompilation(syntaxTree, newTree);
+                syntaxTree = newTree;
+            }
+
+            return syntaxTree;
         }
 
         private static async Task WriteBackChangesAsync(IEnumerable<SyntaxTree> syntaxTrees)
