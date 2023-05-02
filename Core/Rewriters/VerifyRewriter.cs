@@ -18,6 +18,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using RhinoMocksToMoqRewriter.Core.Extensions;
+using RhinoMocksToMoqRewriter.Core.Rewriters.Wrapper;
 
 namespace RhinoMocksToMoqRewriter.Core.Rewriters
 {
@@ -27,8 +28,11 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
         {
             var rhinoMocksVerifyExpressionStatements = GetRhinoMocksVerifyExpressionStatements(node).ToList();
             var annotatedSetupExpressionStatements =
-                node.GetAnnotatedNodes(MoqSyntaxFactory.VerifyAnnotationKind).Select(s => (ExpressionStatementSyntax) s).ToList();
-            if (rhinoMocksVerifyExpressionStatements.Count == 0 && annotatedSetupExpressionStatements.Count == 0)
+                node.GetAnnotatedNodes(MoqSyntaxFactory.VerifyAnnotationKind)
+                    .Select(s => (ExpressionStatementSyntax) s)
+                    .ToList();
+
+            if (!CanConvertMethodDeclaration(rhinoMocksVerifyExpressionStatements, annotatedSetupExpressionStatements))
             {
                 return node;
             }
@@ -93,23 +97,31 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
         {
             for (var i = 0; i < replacementNodes.Count; i++)
             {
-                var replacementNode = replacementNodes[i];
-                foreach (var setupExpression in annotatedSetupExpressionStatements)
-                {
-                    var replacementNodeIdentifierName = replacementNode.GetFirstIdentifierName();
-                    var setupIdentifierName = setupExpression.GetFirstIdentifierName();
-                    var timeData = setupExpression.GetAnnotations(MoqSyntaxFactory.VerifyAnnotationKind).Single().Data;
-
-                    if (!setupIdentifierName.IsEquivalentTo(replacementNodeIdentifierName, false))
-                    {
-                        continue;
-                    }
-
-                    replacementNodes[i] = CreateTimesExpression(replacementNode, replacementNodeIdentifierName, setupExpression, timeData!);
-                }
+                ConvertTimesExpressions(annotatedSetupExpressionStatements, i, in replacementNodes);
             }
 
             return replacementNodes;
+        }
+
+        private static void ConvertTimesExpressions(
+            IReadOnlyList<ExpressionStatementSyntax> annotatedSetupExpressionStatements,
+            SyntaxNodePosition syntaxNodePosition,
+            in List<ExpressionStatementSyntax> replacementNodes)
+        {
+            var replacementNode = replacementNodes[syntaxNodePosition];
+            foreach (var setupExpression in annotatedSetupExpressionStatements)
+            {
+                var replacementNodeIdentifierName = replacementNode.GetFirstIdentifierName();
+                var setupIdentifierName = setupExpression.GetFirstIdentifierName();
+                var timeData = setupExpression.GetAnnotations(MoqSyntaxFactory.VerifyAnnotationKind).Single().Data;
+
+                if (!setupIdentifierName.IsEquivalentTo(replacementNodeIdentifierName, false))
+                {
+                    continue;
+                }
+
+                replacementNodes[syntaxNodePosition] = CreateTimesExpression(replacementNode, replacementNodeIdentifierName, setupExpression, timeData!);
+            }
         }
 
         private static ExpressionStatementSyntax CreateTimesExpression(
@@ -118,24 +130,24 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
             ExpressionStatementSyntax setupExpression,
             string timeData)
         {
-            if (!int.TryParse(timeData, out var times))
+            if (int.TryParse(timeData, out var times))
             {
-                var minMax = GetDataFromString(timeData);
                 return replacementNode.WithExpression(
                     MoqSyntaxFactory.VerifyExpression(
                         replacementNodeIdentifierName,
-                        setupExpression.GetFirstArgument().Expression!,
-                        minMax));
+                        setupExpression.GetFirstArgument().Expression,
+                        times));
             }
 
+            var minMax = GetMinMaxFromString(timeData);
             return replacementNode.WithExpression(
                 MoqSyntaxFactory.VerifyExpression(
                     replacementNodeIdentifierName,
-                    setupExpression.GetFirstArgument().Expression,
-                    times));
+                    setupExpression.GetFirstArgument().Expression!,
+                    minMax));
         }
 
-        private static (int Min, int Max) GetDataFromString(string? annotationData)
+        private static (int Min, int Max) GetMinMaxFromString(string? annotationData)
         {
             var data = annotationData!.Split(":");
             return (int.Parse(data.First()), int.Parse(data.Last()));
@@ -204,7 +216,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
             var mockRepositoryIdentifierName = node.GetFirstIdentifierName();
             var mockIdentifierNames = GetAllMockIdentifierNames(node, rootNode, mockRepositoryIdentifierName).ToList();
 
-            if (mockIdentifierNames.Count == 0)
+            if (!mockIdentifierNames.Any())
             {
                 return new[] {node};
             }
@@ -216,17 +228,22 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                 if (i == mockIdentifierNames.Count - 1)
                 {
                     verifyStatements.Add(
-                        MoqSyntaxFactory.VerifyExpressionStatement(currentIdentifierName.WithoutTrivia())
+                        MoqSyntaxFactory.VerifyExpressionStatement(
+                                currentIdentifierName.WithoutTrivia())
                             .WithLeadingAndTrailingTriviaOfNode(node));
                     continue;
                 }
 
                 verifyStatements.Add(
-                    MoqSyntaxFactory.VerifyExpressionStatement(currentIdentifierName.WithoutTrivia())
-                        .WithLeadingTrivia(node.GetLeadingTrivia())
+                    MoqSyntaxFactory.VerifyExpressionStatement(
+                            currentIdentifierName.WithoutTrivia())
+                        .WithLeadingTrivia(
+                            node.GetLeadingTrivia())
                         .WithTrailingTrivia(
                             SyntaxFactory.Whitespace(
-                                node.GetLeadingTrivia().ToFullString().Contains(Environment.NewLine)
+                                node.GetLeadingTrivia()
+                                    .ToFullString()
+                                    .Contains(Environment.NewLine)
                                     ? string.Empty
                                     : Environment.NewLine)));
             }
@@ -245,7 +262,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                 ? node.Expression.GetFirstIdentifierName()
                 : invocationExpression.ArgumentList.Arguments.First().Expression as IdentifierNameSyntax;
 
-            if (identifierName == null)
+            if (identifierName is null)
             {
                 throw new InvalidOperationException("Node must have an IdentifierName");
             }
@@ -306,6 +323,11 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
         {
             return GetMockIdentifierNamesFromAssignmentExpressions(rootNode, mockRepositoryIdentifierName)
                 .Concat(GetMockIdentifierNamesFromLocalDeclarationStatements(node, mockRepositoryIdentifierName));
+        }
+
+        private static bool CanConvertMethodDeclaration(IEnumerable<SyntaxNode> rhinoMocksVerifyExpressionStatements, IEnumerable<SyntaxNode> annotatedSetupExpressionStatements)
+        {
+            return rhinoMocksVerifyExpressionStatements.Any() && annotatedSetupExpressionStatements.Any();
         }
     }
 }
