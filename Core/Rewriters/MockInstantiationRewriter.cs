@@ -36,7 +36,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                         .Where(IsLocalDeclarationStatementOrInvocationExpression),
                     CompilationId);
 
-            var baseCallNode = VisitBaseExpressionAs<LocalDeclarationStatementSyntax>(() => base.VisitLocalDeclarationStatement(trackedNodes));
+            var baseCallNode = VisitBaseNodeAs<LocalDeclarationStatementSyntax>(() => base.VisitLocalDeclarationStatement(trackedNodes));
 
             if (!IsRhinoMocksLocalDeclarationWithoutVarType(baseCallNode))
             {

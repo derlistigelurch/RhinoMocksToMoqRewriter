@@ -41,7 +41,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
         public MoqSymbols MoqSymbols { get; set; } = null!;
         
-        protected T VisitBaseExpressionAs<T>(Func<SyntaxNode?> function) where T : SyntaxNode
+        protected static T VisitBaseNodeAs<T>(Func<SyntaxNode?> function) where T : SyntaxNode
         {
             return (T)function()!;
         }

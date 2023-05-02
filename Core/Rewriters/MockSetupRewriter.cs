@@ -38,7 +38,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                 return node;
             }
 
-            var baseCallNode = VisitBaseExpressionAs<ExpressionStatementSyntax>(
+            var baseCallNode = VisitBaseNodeAs<ExpressionStatementSyntax>(
                 () => base.VisitExpressionStatement(trackedNodes));
 
             var originalNode = baseCallNode.GetOriginalNode(baseCallNode, CompilationId)!;

@@ -39,7 +39,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                 return node;
             }
 
-            var baseCallNode = VisitBaseExpressionAs<BlockSyntax>(() => base.VisitBlock(trackedNodes));
+            var baseCallNode = VisitBaseNodeAs<BlockSyntax>(() => base.VisitBlock(trackedNodes));
 
             var lastCallExpressionStatementsInBlock = GetLastCallExpressionStatementsInBlock(baseCallNode).ToList();
             if (!lastCallExpressionStatementsInBlock.Any())

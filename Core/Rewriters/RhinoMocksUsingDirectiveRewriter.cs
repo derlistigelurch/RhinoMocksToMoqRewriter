@@ -24,15 +24,18 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
         public override SyntaxNode? VisitCompilationUnit(CompilationUnitSyntax node)
         {
             var usingsWithoutRhinoMocksUsings = node.Usings.Where(s => !s.ToFullString().Contains("Rhino.Mocks")).ToList();
-            if (node.Usings.Last().ToFullString().Contains("Rhino.Mocks"))
+            if (!node.Usings.Last().ToFullString().Contains("Rhino.Mocks"))
             {
-                var lastUsingDirective = usingsWithoutRhinoMocksUsings.Last();
-                usingsWithoutRhinoMocksUsings.Remove(lastUsingDirective);
-                usingsWithoutRhinoMocksUsings.Insert(
-                    usingsWithoutRhinoMocksUsings.Count,
-                    lastUsingDirective.WithTrailingTrivia(
-                        SyntaxFactory.Whitespace(Environment.NewLine)));
+                return node.WithUsings(new SyntaxList<UsingDirectiveSyntax>(usingsWithoutRhinoMocksUsings));
             }
+            
+            
+            var lastUsingDirective = usingsWithoutRhinoMocksUsings.Last();
+            usingsWithoutRhinoMocksUsings.Remove(lastUsingDirective);
+            usingsWithoutRhinoMocksUsings.Insert(
+                usingsWithoutRhinoMocksUsings.Count,
+                lastUsingDirective.WithTrailingTrivia(
+                    SyntaxFactory.Whitespace(Environment.NewLine)));
 
             return node.WithUsings(new SyntaxList<UsingDirectiveSyntax>(usingsWithoutRhinoMocksUsings));
         }

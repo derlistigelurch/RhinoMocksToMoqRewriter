@@ -26,7 +26,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
         public override SyntaxNode? VisitMemberAccessExpression(MemberAccessExpressionSyntax node)
         {
             var trackedNodes = TrackNodes(node);
-            var baseCallNode = VisitBaseExpressionAs<MemberAccessExpressionSyntax>(
+            var baseCallNode = VisitBaseNodeAs<MemberAccessExpressionSyntax>(
                 () => base.VisitMemberAccessExpression(trackedNodes));
 
             var nameSymbol = Model.GetSymbolInfo(
@@ -79,7 +79,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
         {
             var trackedNodes = TrackNodes(node);
 
-            var baseCallNode = VisitBaseExpressionAs<ArgumentSyntax>(
+            var baseCallNode = VisitBaseNodeAs<ArgumentSyntax>(
                 () => base.VisitArgument(trackedNodes));
 
             if (baseCallNode.Expression is not IdentifierNameSyntax identifierName)
@@ -100,7 +100,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
         {
             var trackedNodes = TrackNodes(node);
 
-            var baseCallNode = VisitBaseExpressionAs<ReturnStatementSyntax>(
+            var baseCallNode = VisitBaseNodeAs<ReturnStatementSyntax>(
                 () => base.VisitReturnStatement(trackedNodes));
 
             if (baseCallNode.Expression is not IdentifierNameSyntax identifierName)
@@ -121,7 +121,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
         {
             var trackedNodes = TrackNodes(node);
 
-            var baseCallNode = VisitBaseExpressionAs<InitializerExpressionSyntax>(
+            var baseCallNode = VisitBaseNodeAs<InitializerExpressionSyntax>(
                 () => base.VisitInitializerExpression(trackedNodes));
 
             var newExpressions = baseCallNode.Expressions;
@@ -159,7 +159,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
         public override SyntaxNode? VisitAssignmentExpression(AssignmentExpressionSyntax node)
         {
             var trackedNodes = TrackNodes(node);
-            var baseCallNode = VisitBaseExpressionAs<AssignmentExpressionSyntax>(
+            var baseCallNode = VisitBaseNodeAs<AssignmentExpressionSyntax>(
                 () => base.VisitAssignmentExpression(trackedNodes));
 
             try
@@ -251,7 +251,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
         {
             var trackedNodes = TrackNodes(node);
 
-            var baseCallNode = VisitBaseExpressionAs<ParenthesizedLambdaExpressionSyntax>(
+            var baseCallNode = VisitBaseNodeAs<ParenthesizedLambdaExpressionSyntax>(
                 () => base.VisitParenthesizedLambdaExpression(trackedNodes));
 
             var originalNode = baseCallNode.GetOriginalNode(baseCallNode, CompilationId)!;

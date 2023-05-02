@@ -25,7 +25,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
     {
         public override SyntaxNode? VisitExpressionStatement(ExpressionStatementSyntax node)
         {
-            var baseCallNode = VisitBaseExpressionAs<ExpressionStatementSyntax>(() => base.VisitExpressionStatement(node));
+            var baseCallNode = VisitBaseNodeAs<ExpressionStatementSyntax>(() => base.VisitExpressionStatement(node));
 
             if (!ContainsIgnoreArgumentsMethod(node))
             {
