@@ -27,26 +27,12 @@ namespace RhinoMocksToMoqRewriter.Core
         {
             if (typeSymbol.NullableAnnotation == NullableAnnotation.Annotated)
             {
-                return typeSymbol switch
-                {
-                    IArrayTypeSymbol arrayTypeSymbol => MoqSyntaxFactory.ArrayType(
-                        (TypeSyntax) generator.NullableTypeExpression(
-                            ConvertTypeSyntaxNodes((arrayTypeSymbol).ElementType, generator))),
-                    _ => (TypeSyntax) generator.NullableTypeExpression(ConvertTypeSyntaxNodes(((INamedTypeSymbol) typeSymbol).TypeArguments.FirstOrDefault()
-                                                                                              ?? (INamedTypeSymbol) typeSymbol.OriginalDefinition, generator))
-                };
+                return GetNullableTypeExpression(typeSymbol, generator);
             }
 
             if (typeSymbol.SpecialType != SpecialType.None)
             {
-                try
-                {
-                    return (PredefinedTypeSyntax) generator.TypeExpression(typeSymbol.SpecialType);
-                }
-                catch (Exception)
-                {
-                    return (QualifiedNameSyntax) generator.TypeExpression(typeSymbol);
-                }
+                return GetTypeExpression(typeSymbol, generator);
             }
 
             return typeSymbol switch
@@ -58,6 +44,30 @@ namespace RhinoMocksToMoqRewriter.Core
                     SyntaxFactory.Identifier(typeSymbol.Name),
                     MoqSyntaxFactory.SimpleTypeArgumentList(((INamedTypeSymbol) typeSymbol).TypeArguments.Select(s => ConvertTypeSyntaxNodes(s, generator))))
             };
+        }
+
+        private static TypeSyntax GetNullableTypeExpression(ITypeSymbol typeSymbol, SyntaxGenerator generator)
+        {
+            return typeSymbol switch
+            {
+                IArrayTypeSymbol arrayTypeSymbol => MoqSyntaxFactory.ArrayType(
+                    (TypeSyntax) generator.NullableTypeExpression(
+                        ConvertTypeSyntaxNodes((arrayTypeSymbol).ElementType, generator))),
+                _ => (TypeSyntax) generator.NullableTypeExpression(ConvertTypeSyntaxNodes(((INamedTypeSymbol) typeSymbol).TypeArguments.FirstOrDefault()
+                                                                                          ?? (INamedTypeSymbol) typeSymbol.OriginalDefinition, generator))
+            };
+        }
+
+        private static TypeSyntax GetTypeExpression(ITypeSymbol typeSymbol, SyntaxGenerator generator)
+        {
+            try
+            {
+                return (PredefinedTypeSyntax) generator.TypeExpression(typeSymbol.SpecialType);
+            }
+            catch (Exception)
+            {
+                return (QualifiedNameSyntax) generator.TypeExpression(typeSymbol);
+            }
         }
     }
 }
