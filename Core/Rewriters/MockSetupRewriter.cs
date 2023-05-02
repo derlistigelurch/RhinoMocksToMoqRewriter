@@ -38,21 +38,21 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                 return node;
             }
 
-            var baseCallNode = (ExpressionStatementSyntax) base.VisitExpressionStatement(trackedNodes)!;
+            var baseCallNode = VisitBaseExpressionAs<ExpressionStatementSyntax>(
+                () => base.VisitExpressionStatement(trackedNodes));
 
             var originalNode = baseCallNode.GetOriginalNode(baseCallNode, CompilationId)!;
-            var symbol = Model.GetSymbolInfo(originalNode.Expression).Symbol as IMethodSymbol;
-            if (!RhinoMocksSymbols.AllIMethodOptionsSymbols.Contains(symbol?.OriginalDefinition, SymbolEqualityComparer.Default)
-                && !RhinoMocksSymbols.ExpectSymbols.Contains(symbol?.ReducedFrom ?? symbol?.OriginalDefinition, SymbolEqualityComparer.Default)
-                && !RhinoMocksSymbols.StubSymbols.Contains(symbol?.ReducedFrom ?? symbol?.OriginalDefinition, SymbolEqualityComparer.Default)
-                && !RhinoMocksSymbols.AllIRepeatSymbols.Contains(symbol?.OriginalDefinition, SymbolEqualityComparer.Default))
+
+            if (CanConvertExpressionStatement(originalNode))
             {
                 return baseCallNode;
             }
 
             if (NeedsProtectedExpression(originalNode))
             {
-                baseCallNode = baseCallNode.WithExpression(TransformSetupExpression((InvocationExpressionSyntax) baseCallNode.Expression));
+                baseCallNode = baseCallNode.WithExpression(
+                    TransformSetupExpression(
+                        (InvocationExpressionSyntax) baseCallNode.Expression));
             }
 
             if (NeedsVerifiableExpression(originalNode))
@@ -80,6 +80,15 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                     baseCallNode.GetAnnotations(new[] {"Id", MoqSyntaxFactory.VerifyAnnotationKind}));
         }
 
+        private bool CanConvertExpressionStatement(ExpressionStatementSyntax node)
+        {
+            var symbol = Model.GetSymbolAs<IMethodSymbol>(node.Expression);
+            return !RhinoMocksSymbols.AllIMethodOptionsSymbols.Contains(symbol?.OriginalDefinition, SymbolEqualityComparer.Default)
+                   && !RhinoMocksSymbols.ExpectSymbols.Contains(symbol?.ReducedFrom ?? symbol?.OriginalDefinition, SymbolEqualityComparer.Default)
+                   && !RhinoMocksSymbols.StubSymbols.Contains(symbol?.ReducedFrom ?? symbol?.OriginalDefinition, SymbolEqualityComparer.Default)
+                   && !RhinoMocksSymbols.AllIRepeatSymbols.Contains(symbol?.OriginalDefinition, SymbolEqualityComparer.Default);
+        }
+
         private bool IsAssertWasCalledOrAssertWasNotCalledExpressionStatement(ExpressionStatementSyntax node)
         {
             var originalNode = node.GetOriginalNode(node, CompilationId)!;
@@ -95,12 +104,23 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                 identifierName,
                 MoqSyntaxFactory.ProtectedMock(identifierName));
 
-            var argumentlist = ((InvocationExpressionSyntax) invocationExpression.GetLambdaExpression().Body).ArgumentList.Arguments.Skip(1).ToList();
-            argumentlist.Insert(1, MoqSyntaxFactory.SimpleArgument(MoqSyntaxFactory.TrueLiteralExpression));
+            var argumentList = ((InvocationExpressionSyntax) invocationExpression.GetLambdaExpression().Body)
+                .ArgumentList
+                .Arguments
+                .Skip(1)
+                .ToList();
 
-            invocationExpression = invocationExpression.GetCurrentNode(invocationExpression, CompilationId)!.ReplaceNode(
-                invocationExpression.GetLambdaExpression().Parent?.Parent!,
-                _formatter.Format(MoqSyntaxFactory.SimpleArgumentList(argumentlist)));
+            argumentList.Insert(
+                1,
+                MoqSyntaxFactory.SimpleArgument(
+                    MoqSyntaxFactory.TrueLiteralExpression));
+
+            invocationExpression = invocationExpression.GetCurrentNode(
+                    invocationExpression,
+                    CompilationId)!
+                .ReplaceNode(
+                    invocationExpression.GetLambdaExpression().Parent?.Parent!,
+                    _formatter.Format(MoqSyntaxFactory.SimpleArgumentList(argumentList)));
 
             return invocationExpression;
         }
@@ -313,8 +333,13 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
         private bool NeedsAdditionalAnnotations(ExpressionStatementSyntax node)
         {
-            var symbol = Model.GetSymbolInfo(node.Expression).Symbol;
-            return RhinoMocksSymbols.RhinoMocksIRepeatSymbol.GetMembers().Where(s => s.Name != "Any").Contains(symbol?.OriginalDefinition, SymbolEqualityComparer.Default);
+            var symbol = Model.GetSymbolAs<ISymbol>(node.Expression);
+            return RhinoMocksSymbols.RhinoMocksIRepeatSymbol
+                .GetMembers()
+                .Where(s => s.Name != "Any")
+                .Contains(
+                    symbol?.OriginalDefinition,
+                    SymbolEqualityComparer.Default);
         }
 
         private static InvocationExpressionSyntax RewriteStaticExpression(InvocationExpressionSyntax node)
@@ -334,15 +359,21 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
             return invocationExpression.Expression.DescendantNodesAndSelf().Any(
                 s => Model.GetSymbolInfo(s).Symbol is IMethodSymbol symbol
-                     && RhinoMocksSymbols.ExpectSymbols.Contains(symbol.ReducedFrom ?? symbol.OriginalDefinition, SymbolEqualityComparer.Default));
+                     && RhinoMocksSymbols.ExpectSymbols.Contains(
+                         symbol.ReducedFrom ?? symbol.OriginalDefinition,
+                         SymbolEqualityComparer.Default));
         }
 
         private T TrackDescendantNodes<T>(T node)
             where T : SyntaxNode
         {
             return node.TrackNodes(
-                node.DescendantNodesAndSelf().Where(
-                    s => s.IsKind(SyntaxKind.InvocationExpression) || s.IsKind(SyntaxKind.ExpressionStatement) || s.IsKind(SyntaxKind.SimpleMemberAccessExpression)),
+                node.DescendantNodesAndSelf()
+                    .Where(
+                        s =>
+                            s.IsKind(SyntaxKind.InvocationExpression)
+                            || s.IsKind(SyntaxKind.ExpressionStatement)
+                            || s.IsKind(SyntaxKind.SimpleMemberAccessExpression)),
                 CompilationId);
         }
 
