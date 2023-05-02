@@ -18,6 +18,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using RhinoMocksToMoqRewriter.Core.Extensions;
+using RhinoMocksToMoqRewriter.Core.Rewriters.Wrapper;
 
 namespace RhinoMocksToMoqRewriter.Core.Rewriters
 {
@@ -37,17 +38,18 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
             var symbol = Model.GetSymbolAs<ISymbol>(node.GetOriginalNode(node, CompilationId)!)?.OriginalDefinition;
             return node switch
             {
-                ExpressionStatementSyntax expressionStatement 
+                ExpressionStatementSyntax expressionStatement
                     => RewriteExpressionStatement(expressionStatement),
-                MemberAccessExpressionSyntax memberAccessExpression when GetAllSimpleRhinoMocksSymbols().Contains(symbol, SymbolEqualityComparer.Default) 
+                MemberAccessExpressionSyntax memberAccessExpression when GetAllSimpleRhinoMocksSymbols().Contains(symbol, SymbolEqualityComparer.Default)
                     => RewriteMemberAccessExpression(memberAccessExpression, node),
-                InvocationExpressionSyntax {Expression: MemberAccessExpressionSyntax rhinoMocksMemberAccessExpression} rhinoMocksInvocationExpression 
+                InvocationExpressionSyntax {Expression: MemberAccessExpressionSyntax rhinoMocksMemberAccessExpression} rhinoMocksInvocationExpression
                     => RewriteInvocationExpression(symbol, rhinoMocksInvocationExpression, rhinoMocksMemberAccessExpression, node),
                 _ => node
             };
         }
 
-        private SyntaxNode RewriteInvocationExpression(ISymbol? symbol, InvocationExpressionSyntax invocationExpression, MemberAccessExpressionSyntax memberAccessExpression, SyntaxNode node)
+        private SyntaxNode RewriteInvocationExpression(ISymbol? symbol, InvocationExpressionSyntax invocationExpression, MemberAccessExpressionSyntax memberAccessExpression,
+            SyntaxNode node)
         {
             return symbol switch
             {
@@ -55,7 +57,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                     => ConvertExpectExpression(invocationExpression).WithLeadingAndTrailingTriviaOfNode(node),
                 _ when RhinoMocksSymbols.ConstraintsSymbols.Contains(symbol, SymbolEqualityComparer.Default)
                     => RewriteContainedExpression(memberAccessExpression, invocationExpression),
-                _ when GetAllSimpleRhinoMocksSymbols().Contains(symbol, SymbolEqualityComparer.Default) 
+                _ when GetAllSimpleRhinoMocksSymbols().Contains(symbol, SymbolEqualityComparer.Default)
                     => invocationExpression
                         .ReplaceNode(
                             node.GetCurrentNode(memberAccessExpression.Expression, CompilationId)!,
@@ -63,7 +65,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                 _ => node
             };
         }
-        
+
         private SyntaxNode RewriteExpressionStatement(ExpressionStatementSyntax expressionStatement)
         {
             return expressionStatement.WithExpression((ExpressionSyntax) RewriteExpectCall(expressionStatement.Expression));
@@ -81,7 +83,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
             var containedExpression = RewriteExpectCall(memberAccessExpression.Expression);
             return ConvertMockedExpression(containedExpression, memberAccessExpression, invocationExpression);
         }
-        
+
         private SyntaxNode ConvertMockedExpression(
             SyntaxNode rewrittenContainedExpression,
             MemberAccessExpressionSyntax originalRhinoMocksMemberAccessExpression,
@@ -133,8 +135,16 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
         private ArgumentListSyntax ConvertConstraints(ArgumentListSyntax originalArgumentList, IReadOnlyList<ITypeSymbol> parameterTypes)
         {
-            var convertedArguments = parameterTypes.Select((s, i) =>
-                MoqSyntaxFactory.MatchesArgument(TypeSymbolToTypeSyntaxConverter.ConvertTypeSyntaxNodes(s, Generator), originalArgumentList.Arguments[i]));
+            var convertedArguments = parameterTypes
+                .Select((s, i) => new SymbolWithIndex<ITypeSymbol>(s, i))
+                .Select(
+                    s =>
+                        MoqSyntaxFactory.MatchesArgument(
+                            TypeSymbolToTypeSyntaxConverter.ConvertTypeSyntaxNodes(
+                                s.Symbol,
+                                Generator),
+                            originalArgumentList.Arguments[s]));
+
             return MoqSyntaxFactory.SimpleArgumentList(convertedArguments);
         }
 
