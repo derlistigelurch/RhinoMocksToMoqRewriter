@@ -38,23 +38,30 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                     + $"  {node.SyntaxTree.FilePath} at line {node.GetLocation().GetMappedLineSpan().StartLinePosition.Line}");
                 return node;
             }
-
+            
             var usingStatements = GetRhinoMocksOrderedUsingStatements(treeWithTrackedNodes).ToList();
             for (var i = 0; i < usingStatements.Count; i++)
             {
-                var usingStatement = usingStatements[i];
-                var trackedUsingStatement = treeWithTrackedNodes.GetCurrentNode(usingStatement, CompilationId);
-                int? index = usingStatements.Count == 1 ? null : i + 1;
-                var statements = ReplaceExpressionStatements(((BlockSyntax) usingStatement.Statement).Statements, index);
+                treeWithTrackedNodes = ReplaceTrackedNodes(usingStatements, i, treeWithTrackedNodes);
+            }
 
-                try
-                {
-                    treeWithTrackedNodes = treeWithTrackedNodes.ReplaceNode(trackedUsingStatement!, statements);
-                }
-                catch (Exception)
-                {
-                    treeWithTrackedNodes = treeWithTrackedNodes.ReplaceNode(trackedUsingStatement!.Parent!, statements);
-                }
+            return treeWithTrackedNodes;
+        }
+
+        private MethodDeclarationSyntax ReplaceTrackedNodes(List<UsingStatementSyntax> usingStatements, int i, MethodDeclarationSyntax treeWithTrackedNodes)
+        {
+            var usingStatement = usingStatements[i];
+            var trackedUsingStatement = treeWithTrackedNodes.GetCurrentNode(usingStatement, CompilationId);
+            int? index = usingStatements.Count == 1 ? null : i + 1;
+            var statements = ReplaceExpressionStatements(((BlockSyntax) usingStatement.Statement).Statements, index);
+
+            try
+            {
+                treeWithTrackedNodes = treeWithTrackedNodes.ReplaceNode(trackedUsingStatement!, statements);
+            }
+            catch (Exception)
+            {
+                treeWithTrackedNodes = treeWithTrackedNodes.ReplaceNode(trackedUsingStatement!.Parent!, statements);
             }
 
             return treeWithTrackedNodes;
