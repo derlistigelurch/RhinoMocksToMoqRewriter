@@ -23,65 +23,66 @@ using Microsoft.CodeAnalysis.MSBuild;
 
 namespace RhinoMocksToMoqRewriter.Application
 {
-  public class CompilationLoader
-  {
-    private readonly MSBuildWorkspace _msBuildWorkspace;
-
-    public SyntaxGenerator Generator { get; }
-
-    public Workspace Workspace { get; private set; } = null!;
-
-    public CompilationLoader ()
+    public class CompilationLoader
     {
-      var instance = MSBuildLocator.QueryVisualStudioInstances().First();
-      MSBuildLocator.RegisterInstance (instance);
-      _msBuildWorkspace = MSBuildWorkspace.Create();
-      Generator = SyntaxGenerator.GetGenerator (_msBuildWorkspace, "C#");
+        private readonly MSBuildWorkspace _msBuildWorkspace;
+
+        public SyntaxGenerator Generator { get; }
+
+        public Workspace Workspace { get; private set; } = null!;
+
+        public CompilationLoader()
+        {
+            var instance = MSBuildLocator.QueryVisualStudioInstances().First();
+            MSBuildLocator.RegisterInstance(instance);
+            _msBuildWorkspace = MSBuildWorkspace.Create();
+            Generator = SyntaxGenerator.GetGenerator(_msBuildWorkspace, "C#");
+        }
+
+        public async Task<Solution> LoadSolutionAsync(string pathToSolution)
+        {
+            var solution = await _msBuildWorkspace.OpenSolutionAsync(pathToSolution);
+            Workspace = solution.Workspace;
+            return solution;
+        }
+
+        public async Task<Project> LoadProjectAsync(string pathToProject)
+        {
+            var project = await _msBuildWorkspace.OpenProjectAsync(pathToProject);
+            Workspace = project.Solution.Workspace;
+            return project;
+        }
+
+        public static async Task<IReadOnlyList<CSharpCompilation>> LoadCompilationsAsync(IEnumerable<Project> projects)
+        {
+            var allCompilations = await Task
+                .WhenAll(projects.Select(async p => await p.GetCompilationAsync()));
+            var rhinoMocksCompilations = allCompilations
+                .Select(c => c as CSharpCompilation)
+                .Where(c => c?.ReferencedAssemblyNames.Any(a => a.Name.Contains("Rhino.Mocks")) == true)
+                .ToList();
+            var moqCompilations = allCompilations
+                .Select(c => c as CSharpCompilation)
+                .Where(c => c?.ReferencedAssemblyNames.Any(a => a.Name.Contains("Moq")) == true)
+                .ToList();
+
+            AssertThatAllRhinoMocksCompilationsReferenceMoq(rhinoMocksCompilations!, moqCompilations!);
+
+            return rhinoMocksCompilations.AsReadOnly()!;
+        }
+
+        private static void AssertThatAllRhinoMocksCompilationsReferenceMoq(IReadOnlyList<CSharpCompilation> rhinoMocksCompilations,
+            IReadOnlyList<CSharpCompilation> moqCompilations)
+        {
+            var projectsWithMissingMoqReference = rhinoMocksCompilations.Except(moqCompilations).Select(c => c.AssemblyName).ToList();
+            if (projectsWithMissingMoqReference.Any())
+            {
+                var message =
+                    $"Moq is missing in the following projects where Rhino.Mocks IS installed: {Environment.NewLine}"
+                    + string.Join(Environment.NewLine, projectsWithMissingMoqReference);
+
+                throw new InvalidOperationException(message);
+            }
+        }
     }
-
-    public async Task<Solution> LoadSolutionAsync (string pathToSolution)
-    {
-      var solution = await _msBuildWorkspace.OpenSolutionAsync (pathToSolution);
-      Workspace = solution.Workspace;
-      return solution;
-    }
-
-    public async Task<Project> LoadProjectAsync (string pathToProject)
-    {
-      var project = await _msBuildWorkspace.OpenProjectAsync (pathToProject);
-      Workspace = project.Solution.Workspace;
-      return project;
-    }
-
-    public static async Task<IReadOnlyList<CSharpCompilation>> LoadCompilationsAsync (IEnumerable<Project> projects)
-    {
-      var allCompilations = await Task
-          .WhenAll (projects.Select (async p => await p.GetCompilationAsync()));
-      var rhinoMocksCompilations = allCompilations
-          .Select (c => c as CSharpCompilation)
-          .Where (c => c?.ReferencedAssemblyNames.Any (a => a.Name.Contains ("Rhino.Mocks")) == true)
-          .ToList();
-      var moqCompilations = allCompilations
-          .Select (c => c as CSharpCompilation)
-          .Where (c => c?.ReferencedAssemblyNames.Any (a => a.Name.Contains ("Moq")) == true)
-          .ToList();
-
-      AssertThatAllRhinoMocksCompilationsReferenceMoq (rhinoMocksCompilations!, moqCompilations!);
-
-      return rhinoMocksCompilations.AsReadOnly()!;
-    }
-
-    private static void AssertThatAllRhinoMocksCompilationsReferenceMoq (IReadOnlyList<CSharpCompilation> rhinoMocksCompilations, IReadOnlyList<CSharpCompilation> moqCompilations)
-    {
-      var projectsWithMissingMoqReference = rhinoMocksCompilations.Except (moqCompilations).Select (c => c.AssemblyName).ToList();
-      if (projectsWithMissingMoqReference.Any())
-      {
-        var message =
-            $"Moq is missing in the following projects where Rhino.Mocks IS installed: {Environment.NewLine}"
-            + string.Join (Environment.NewLine, projectsWithMissingMoqReference);
-
-        throw new InvalidOperationException (message);
-      }
-    }
-  }
 }

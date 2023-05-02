@@ -20,43 +20,43 @@ using RhinoMocksToMoqRewriter.Core;
 
 namespace RhinoMocksToMoqRewriter.Application
 {
-  public static class Program
-  {
-    public static async Task<int> Main (string[] args)
+    public static class Program
     {
-      var compilationLoader = new CompilationLoader();
-      var compilations = new List<CSharpCompilation>();
-      try
-      {
-        await Parser.Default.ParseArguments<Options> (args)
-            .WithParsedAsync (async opt => { compilations.AddRange (await ParseArgumentsAsync (compilationLoader, opt)); });
-      }
-      catch (System.IO.FileNotFoundException e)
-      {
-        await Console.Error.WriteLineAsync (e.Message);
-        return 1;
-      }
+        public static async Task<int> Main(string[] args)
+        {
+            var compilationLoader = new CompilationLoader();
+            var compilations = new List<CSharpCompilation>();
+            try
+            {
+                await Parser.Default.ParseArguments<Options>(args)
+                    .WithParsedAsync(async opt => { compilations.AddRange(await ParseArgumentsAsync(compilationLoader, opt)); });
+            }
+            catch (System.IO.FileNotFoundException e)
+            {
+                await Console.Error.WriteLineAsync(e.Message);
+                return 1;
+            }
 
-      await RewriterOrchestrator.RewriteAsync (compilations, compilationLoader.Generator, compilationLoader.Workspace);
+            await RewriterOrchestrator.RewriteAsync(compilations, compilationLoader.Generator, compilationLoader.Workspace);
 
-      return 0;
+            return 0;
+        }
+
+        private static async Task<IReadOnlyList<CSharpCompilation>> ParseArgumentsAsync(CompilationLoader compilationLoader, Options opt)
+        {
+            if (!string.IsNullOrEmpty(opt.SolutionPath))
+            {
+                var solution = await compilationLoader.LoadSolutionAsync(opt.SolutionPath);
+                return await CompilationLoader.LoadCompilationsAsync(solution.Projects);
+            }
+
+            if (!string.IsNullOrEmpty(opt.ProjectPath))
+            {
+                var project = await compilationLoader.LoadProjectAsync(opt.ProjectPath);
+                return await CompilationLoader.LoadCompilationsAsync(new[] {project});
+            }
+
+            throw new ArgumentException("Unable to load documents!");
+        }
     }
-
-    private static async Task<IReadOnlyList<CSharpCompilation>> ParseArgumentsAsync (CompilationLoader compilationLoader, Options opt)
-    {
-      if (!string.IsNullOrEmpty (opt.SolutionPath))
-      {
-        var solution = await compilationLoader.LoadSolutionAsync (opt.SolutionPath);
-        return await CompilationLoader.LoadCompilationsAsync (solution.Projects);
-      }
-
-      if (!string.IsNullOrEmpty (opt.ProjectPath))
-      {
-        var project = await compilationLoader.LoadProjectAsync (opt.ProjectPath);
-        return await CompilationLoader.LoadCompilationsAsync (new[] { project });
-      }
-
-      throw new ArgumentException ("Unable to load documents!");
-    }
-  }
 }

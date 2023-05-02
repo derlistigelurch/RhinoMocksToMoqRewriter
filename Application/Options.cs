@@ -16,12 +16,12 @@ using CommandLine;
 
 namespace RhinoMocksToMoqRewriter.Application
 {
-  public class Options
-  {
-    [Option ('S', "Solution", Required = true, SetName = "SolutionPath", HelpText = "Relative or absolute path to a solution file.")]
-    public string? SolutionPath { get; set; }
+    public class Options
+    {
+        [Option('S', "Solution", Required = true, SetName = "SolutionPath", HelpText = "Relative or absolute path to a solution file.")]
+        public string? SolutionPath { get; set; }
 
-    [Option ('P', "Project", Required = true, SetName = "ProjectPath", HelpText = "Relative or absolute path to a project file.")]
-    public string? ProjectPath { get; set; }
-  }
+        [Option('P', "Project", Required = true, SetName = "ProjectPath", HelpText = "Relative or absolute path to a project file.")]
+        public string? ProjectPath { get; set; }
+    }
 }
