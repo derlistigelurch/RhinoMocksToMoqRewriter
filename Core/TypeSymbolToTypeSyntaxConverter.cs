@@ -27,7 +27,7 @@ namespace RhinoMocksToMoqRewriter.Core
       {
         return typeSymbol switch
         {
-            IArrayTypeSymbol arrayTypeSymbol => (TypeSyntax) MoqSyntaxFactory.ArrayType (
+            IArrayTypeSymbol arrayTypeSymbol => MoqSyntaxFactory.ArrayType (
                 (TypeSyntax) generator.NullableTypeExpression (
                     ConvertTypeSyntaxNodes ((arrayTypeSymbol).ElementType, generator))),
             _ => (TypeSyntax) generator.NullableTypeExpression (ConvertTypeSyntaxNodes (((INamedTypeSymbol) typeSymbol).TypeArguments.FirstOrDefault()
