@@ -17,6 +17,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using RhinoMocksToMoqRewriter.Core.Extensions;
+using RhinoMocksToMoqRewriter.Core.Rewriters.Wrapper;
 
 namespace RhinoMocksToMoqRewriter.Core.Rewriters
 {
@@ -78,11 +79,11 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
             }
 
             var rhinoMocksMethodGenericName = baseCallNode.GetFirstGenericNameOrDefault();
-            var (moqMockTypeArgumentList, moqMockArgumentSyntaxList) = rhinoMocksMethodGenericName is null
+            var syntaxNodePair = rhinoMocksMethodGenericName is null
                 ? GetDataFromMockWithoutGenericName(baseCallNode)
                 : GetDataFromMockWithGenericName(baseCallNode, rhinoMocksMethodGenericName);
 
-            if (moqMockTypeArgumentList is null || moqMockArgumentSyntaxList is null)
+            if (!syntaxNodePair.IsValid)
             {
                 return baseCallNode;
             }
@@ -90,13 +91,13 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
             return methodSymbol switch
             {
                 _ when RhinoMocksSymbols.AllGenerateMockAndStubSymbols.Contains(methodSymbol, SymbolEqualityComparer.Default)
-                    => _formatter.Format(MoqSyntaxFactory.MockCreationExpression(moqMockTypeArgumentList, moqMockArgumentSyntaxList))
+                    => _formatter.Format(MoqSyntaxFactory.MockCreationExpression(syntaxNodePair!, syntaxNodePair))
                         .WithLeadingAndTrailingTriviaOfNode(baseCallNode),
                 _ when RhinoMocksSymbols.AllPartialMockSymbols.Contains(methodSymbol, SymbolEqualityComparer.Default)
-                    => _formatter.Format(MoqSyntaxFactory.PartialMockCreationExpression(moqMockTypeArgumentList, moqMockArgumentSyntaxList))
+                    => _formatter.Format(MoqSyntaxFactory.PartialMockCreationExpression(syntaxNodePair!, syntaxNodePair))
                         .WithLeadingAndTrailingTriviaOfNode(baseCallNode),
                 _ when RhinoMocksSymbols.AllStrictMockSymbols.Contains(methodSymbol, SymbolEqualityComparer.Default)
-                    => _formatter.Format(MoqSyntaxFactory.StrictMockCreationExpression(moqMockTypeArgumentList, moqMockArgumentSyntaxList))
+                    => _formatter.Format(MoqSyntaxFactory.StrictMockCreationExpression(syntaxNodePair!, syntaxNodePair))
                         .WithLeadingAndTrailingTriviaOfNode(baseCallNode),
                 _ => baseCallNode
             };
@@ -107,7 +108,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
             return node.IsKind(SyntaxKind.LocalDeclarationStatement) || node.IsKind(SyntaxKind.InvocationExpression);
         }
 
-        private static (TypeArgumentListSyntax, ArgumentListSyntax) GetDataFromMockWithGenericName(
+        private static SyntaxNodePair<TypeArgumentListSyntax?, ArgumentListSyntax?>GetDataFromMockWithGenericName(
             InvocationExpressionSyntax baseCallNode,
             GenericNameSyntax rhinoMocksMethodGenericName)
         {
@@ -123,7 +124,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
             return (moqMockTypeArgumentList, moqMockArgumentSyntaxList);
         }
 
-        private static (TypeArgumentListSyntax?, ArgumentListSyntax?) GetDataFromMockWithoutGenericName(InvocationExpressionSyntax baseCallNode)
+        private static SyntaxNodePair<TypeArgumentListSyntax?, ArgumentListSyntax?> GetDataFromMockWithoutGenericName(InvocationExpressionSyntax baseCallNode)
         {
             if (baseCallNode.ArgumentList.GetFirstArgumentOrDefault() is not { } typeArgument)
             {
