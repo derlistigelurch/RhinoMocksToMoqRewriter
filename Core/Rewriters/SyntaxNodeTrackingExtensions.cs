@@ -18,80 +18,66 @@ using Microsoft.CodeAnalysis;
 
 namespace RhinoMocksToMoqRewriter.Core.Rewriters
 {
-  public static class SyntaxNodeTrackingExtensions
-  {
-    private static readonly Dictionary<(SyntaxAnnotation Annotation, Guid CompilationId), SyntaxNode> s_originalNodes = new();
-    private const string c_annotationId = "Id";
-
-    public static TRoot TrackNode<TRoot> (this TRoot root, SyntaxNode node, Guid compilationId)
-        where TRoot : SyntaxNode
+    public static class SyntaxNodeTrackingExtensions
     {
-      return root.TrackNodes (new[] { node }, compilationId);
-    }
+        private static readonly Dictionary<(SyntaxAnnotation Annotation, Guid CompilationId), SyntaxNode> s_originalNodes = new();
+        private const string c_annotationId = "Id";
 
-    public static TRoot TrackNodes<TRoot> (this TRoot root, IEnumerable<SyntaxNode> nodes, Guid compilationId)
-        where TRoot : SyntaxNode
-    {
-      var trackedNodes = Microsoft.CodeAnalysis.SyntaxNodeExtensions.TrackNodes (root, nodes);
-      foreach (var node in nodes)
-      {
-        var currentNode = trackedNodes.GetCurrentNode (node, compilationId)!;
-        var annotations = currentNode.GetAnnotations (c_annotationId).ToList();
-        var trackedNode = annotations.Select (a => s_originalNodes.GetValueOrDefault ((a, compilationId))).FirstOrDefault();
-
-        foreach (var annotation in annotations.Where (a => !s_originalNodes.ContainsKey ((a, compilationId))))
+        public static TRoot TrackNode<TRoot>(this TRoot root, SyntaxNode node, Guid compilationId)
+            where TRoot : SyntaxNode
         {
-          s_originalNodes.Add ((annotation, compilationId), trackedNode ?? node);
+            return root.TrackNodes(new[] {node}, compilationId);
         }
-      }
 
-      return trackedNodes;
+        public static TRoot TrackNodes<TRoot>(this TRoot root, IEnumerable<SyntaxNode> nodes, Guid compilationId)
+            where TRoot : SyntaxNode
+        {
+            var trackedNodes = Microsoft.CodeAnalysis.SyntaxNodeExtensions.TrackNodes(root, nodes);
+            foreach (var node in nodes)
+            {
+                var currentNode = trackedNodes.GetCurrentNode(node, compilationId)!;
+                var annotations = currentNode.GetAnnotations(c_annotationId).ToList();
+                var trackedNode = annotations.Select(a => s_originalNodes.GetValueOrDefault((a, compilationId))).FirstOrDefault();
+
+                foreach (var annotation in annotations.Where(a => !s_originalNodes.ContainsKey((a, compilationId))))
+                {
+                    s_originalNodes.Add((annotation, compilationId), trackedNode ?? node);
+                }
+            }
+
+            return trackedNodes;
+        }
+
+        public static T? GetOriginalNode<T>(this SyntaxNode root, T trackedNode, Guid compilationId)
+            where T : SyntaxNode
+        {
+            var annotation = trackedNode.GetAnnotations(c_annotationId).FirstOrDefault();
+            if (annotation is not null)
+            {
+                return (T) s_originalNodes[(annotation, compilationId)];
+            }
+
+            return null;
+        }
+
+        public static T? GetCurrentNode<T>(this SyntaxNode root, T trackedNode, Guid compilationId)
+            where T : SyntaxNode
+        {
+            var currentNode = Microsoft.CodeAnalysis.SyntaxNodeExtensions.GetCurrentNode(root, trackedNode);
+            if (currentNode != null)
+            {
+                return currentNode;
+            }
+
+            var originalNode = root.GetOriginalNode(trackedNode, compilationId);
+            if (originalNode == null)
+            {
+                return null;
+            }
+
+            return Microsoft.CodeAnalysis.SyntaxNodeExtensions.GetCurrentNode(root, originalNode);
+        }
+
+        public static void ClearLookup() => s_originalNodes.Clear();
     }
-
-    [Obsolete ("Use overload with compilationId", true)]
-    public static TRoot TrackNodes<TRoot> (this TRoot root, IEnumerable<SyntaxNode> nodes)
-        where TRoot : SyntaxNode
-    {
-      throw new NotSupportedException();
-    }
-
-    public static T? GetOriginalNode<T> (this SyntaxNode root, T trackedNode, Guid compilationId)
-        where T : SyntaxNode
-    {
-      var annotation = trackedNode.GetAnnotations (c_annotationId).FirstOrDefault();
-      if (annotation is not null)
-      {
-        return (T) s_originalNodes[(annotation, compilationId)];
-      }
-
-      return null;
-    }
-
-    public static T? GetCurrentNode<T> (this SyntaxNode root, T trackedNode, Guid compilationId)
-        where T : SyntaxNode
-    {
-      var currentNode = Microsoft.CodeAnalysis.SyntaxNodeExtensions.GetCurrentNode (root, trackedNode);
-      if (currentNode != null)
-      {
-        return currentNode;
-      }
-
-      var originalNode = root.GetOriginalNode (trackedNode, compilationId);
-      if (originalNode == null)
-      {
-        return null;
-      }
-
-      return Microsoft.CodeAnalysis.SyntaxNodeExtensions.GetCurrentNode (root, originalNode);
-    }
-
-    [Obsolete ("Use overload with compilationId", true)]
-    public static T? GetCurrentNode<T> (this SyntaxNode root, T trackedNode)
-        where T : SyntaxNode
-    {
-      throw new NotSupportedException();
-    }
-
-    public static void ClearLookup () => s_originalNodes.Clear();
-  }
 }
