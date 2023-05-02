@@ -68,7 +68,7 @@ namespace RhinoMocksToMoqRewriter.Core
                         rewriter.CompilationId = Guid.NewGuid();
                         rewriter.Generator = generator;
                         rewriter.RhinoMocksSymbols ??= rhinoMocksSymbols;
-                        rewriter.MoqSymbols ??= moqSymbols;
+                        rewriter.MoqSymbols ??= moqSymbols;     
 
                         var newRoot = rewriter.Visit(await currentTree.GetRootAsync());
                         var newTree = currentTree.WithRootAndOptions(newRoot, currentTree.Options);

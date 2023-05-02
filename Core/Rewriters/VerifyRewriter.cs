@@ -95,7 +95,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
             List<ExpressionStatementSyntax> replacementNodes,
             IReadOnlyList<ExpressionStatementSyntax> annotatedSetupExpressionStatements)
         {
-            for (var i = 0; i < replacementNodes.Count; i++)
+            for (SyntaxNodePosition i = 0; i < replacementNodes.Count; i++)
             {
                 ConvertTimesExpressions(annotatedSetupExpressionStatements, i, in replacementNodes);
             }
@@ -222,7 +222,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
             }
 
             var verifyStatements = new List<ExpressionStatementSyntax>();
-            for (var i = 0; i < mockIdentifierNames.Count; i++)
+            for (SyntaxNodePosition i = 0; i < mockIdentifierNames.Count; i++)
             {
                 var currentIdentifierName = mockIdentifierNames[i];
                 if (i == mockIdentifierNames.Count - 1)

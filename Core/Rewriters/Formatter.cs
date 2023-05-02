@@ -18,6 +18,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using RhinoMocksToMoqRewriter.Core.Extensions;
+using RhinoMocksToMoqRewriter.Core.Rewriters.Wrapper;
 
 namespace RhinoMocksToMoqRewriter.Core.Rewriters
 {
@@ -56,23 +57,12 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
             formattedArgumentList = formattedArgumentList
                 .WithOpenParenToken(
                     node.OpenParenToken
-                        .WithLeadingTrivia(formattedArgumentList.IsEmpty() ? SyntaxFactory.Whitespace(string.Empty) : SyntaxFactory.Space))
+                        .WithLeadingTrivia(formattedArgumentList.IsEmpty()
+                            ? SyntaxFactory.Whitespace(string.Empty)
+                            : SyntaxFactory.Space))
                 .WithCloseParenToken(node.CloseParenToken);
 
             return RemoveRedundantNewLines(formattedArgumentList.ToFullString());
-        }
-
-        private static ArgumentListSyntax RemoveRedundantNewLines(string nodeAsString)
-        {
-            const string redundantNewLinePattern = @"(?<!^)\((\n|\r\n){2,}";
-            var matches = Regex.Matches(nodeAsString, redundantNewLinePattern, RegexOptions.None, TimeSpan.FromMilliseconds(100)).Select(s => s.ToString());
-            foreach (var match in matches)
-            {
-                var nodeWithDeletedNewLine = $"{match.First()}{Environment.NewLine}";
-                nodeAsString = nodeAsString.Replace(match, nodeWithDeletedNewLine);
-            }
-
-            return SyntaxFactory.ParseArgumentList(nodeAsString);
         }
 
         public override SyntaxNode? VisitFieldDeclaration(FieldDeclarationSyntax node)
@@ -114,28 +104,71 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
             return formattedNode.WithLeadingAndTrailingTriviaOfNode(node);
         }
 
+        private static ArgumentListSyntax RemoveRedundantNewLines(string nodeAsString)
+        {
+            const string redundantNewLinePattern = @"(?<!^)\((\n|\r\n){2,}";
+            var matches = Regex.Matches(
+                    nodeAsString,
+                    redundantNewLinePattern,
+                    RegexOptions.None,
+                    TimeSpan.FromMilliseconds(100))
+                .Select(s => s.ToString());
+
+            foreach (var match in matches)
+            {
+                var nodeWithDeletedNewLine = $"{match.First()}{Environment.NewLine}";
+                nodeAsString = nodeAsString.Replace(match, nodeWithDeletedNewLine);
+            }
+
+            return SyntaxFactory.ParseArgumentList(nodeAsString);
+        }
+
         private static string DeleteObsoleteNewLinesBetweenStatements(string nodeAsString)
         {
             const string? pattern = "[^{](\n|\r\n){3,}[^}]";
-            var matches = Regex.Matches(nodeAsString, pattern, RegexOptions.None, TimeSpan.FromMilliseconds(100)).Select(m => m.ToString());
+            var matches = Regex.Matches(
+                    nodeAsString,
+                    pattern,
+                    RegexOptions.None,
+                    TimeSpan.FromMilliseconds(100))
+                .Select(m => m.ToString());
+
             return matches.Aggregate(nodeAsString, (current, match) => current.Replace(match, $"{match.First()}{Environment.NewLine}{Environment.NewLine}{match.Last()}"));
         }
 
         private static string DeleteObsoleteNewLinesBeforeCurlyBrackets(string nodeAsString)
         {
             const string? pattern = "(\n|\r\n){2,} *}";
-            var matches = Regex.Matches(nodeAsString, pattern, RegexOptions.None, TimeSpan.FromMilliseconds(100)).Select(m => m.ToString());
+            var matches = Regex.Matches(
+                    nodeAsString,
+                    pattern,
+                    RegexOptions.None,
+                    TimeSpan.FromMilliseconds(100))
+                .Select(m => m.ToString());
+
             return matches.Aggregate(
                 nodeAsString,
-                (current, match) => current
-                    .Replace(match, $"{Environment.NewLine}{match.Replace(Environment.NewLine, string.Empty)}"));
+                (current, match) =>
+                    current.Replace(
+                        match,
+                        $"{Environment.NewLine}{match.Replace(Environment.NewLine, string.Empty)}"));
         }
 
         private static string DeleteObsoleteNewLinesAfterCurlyBrackets(string nodeAsString)
         {
             const string? pattern = "{(\n|\r\n){2,}";
-            var matches = Regex.Matches(nodeAsString, pattern, RegexOptions.None, TimeSpan.FromMilliseconds(100)).Select(m => m.ToString());
-            return matches.Aggregate(nodeAsString, (current, match) => current.Replace(match, $"{match.First()}{Environment.NewLine}"));
+            var matches = Regex.Matches(
+                    nodeAsString,
+                    pattern,
+                    RegexOptions.None,
+                    TimeSpan.FromMilliseconds(100))
+                .Select(m => m.ToString());
+
+            return matches.Aggregate(
+                nodeAsString,
+                (current, match) =>
+                    current.Replace(
+                        match, $"{match.First()}{Environment.NewLine}"));
         }
 
         private static MethodDeclarationSyntax? ParseMethodDeclaration(string nodeAsString)
@@ -150,15 +183,26 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                 + "}"
                 + "}");
 
-            var methodDeclaration = tree.GetRoot().DescendantNodes().SingleOrDefault(s => s.IsKind(SyntaxKind.MethodDeclaration)) as MethodDeclarationSyntax;
-            return methodDeclaration?.WithLeadingTrivia(SyntaxFactory.Whitespace(Environment.NewLine + methodDeclaration.GetLeadingTrivia()));
+            var methodDeclaration = tree.GetRoot()
+                .DescendantNodes()
+                .SingleOrDefault(s => s.IsKind(SyntaxKind.MethodDeclaration)) as MethodDeclarationSyntax;
+
+            return methodDeclaration?.WithLeadingTrivia(
+                SyntaxFactory.Whitespace(
+                    $"{Environment.NewLine}{methodDeclaration.GetLeadingTrivia()}"));
         }
 
         private static ExpressionStatementSyntax RemoveRedundantWhitespaces(ExpressionStatementSyntax baseCallNode)
         {
             var nodeAsString = baseCallNode.ToFullString();
             const string? redundantSpaceBetweenParenthesesPattern = @"(?<!^)\w{1} {2,}\(";
-            var matches = Regex.Matches(nodeAsString, redundantSpaceBetweenParenthesesPattern, RegexOptions.None, TimeSpan.FromMilliseconds(100)).Select(s => s.ToString());
+            var matches = Regex.Matches(
+                    nodeAsString,
+                    redundantSpaceBetweenParenthesesPattern,
+                    RegexOptions.None,
+                    TimeSpan.FromMilliseconds(100))
+                .Select(s => s.ToString());
+
             foreach (var match in matches)
             {
                 var parenthesesWithFormattedWhiteSpace = $"{match.First()} {match.Last()}";
@@ -172,40 +216,57 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
         {
             return node.Expression is not MemberAccessExpressionSyntax memberAccessExpression
                 ? node
-                : node.WithExpression(FormatMemberAccessExpression(memberAccessExpression)).WithoutTrailingTrivia();
+                : node.WithExpression(
+                        FormatMemberAccessExpression(memberAccessExpression))
+                    .WithoutTrailingTrivia();
         }
 
         private static MemberAccessExpressionSyntax FormatMemberAccessExpression(MemberAccessExpressionSyntax node)
         {
             var indentation = GetIndentation(node);
             return MoqSyntaxFactory.MemberAccessExpression(
-                node.Expression.WithTrailingTrivia(SyntaxFactory.Whitespace(Environment.NewLine + indentation)),
+                node.Expression.WithTrailingTrivia(
+                    SyntaxFactory.Whitespace($"{Environment.NewLine}{indentation}")),
                 node.Name);
         }
 
         private static string GetIndentation(MemberAccessExpressionSyntax node)
         {
-            var firstMemberAccessExpressionTrivia = ((MemberAccessExpressionSyntax) node.GetFirstIdentifierName().Parent!).OperatorToken.LeadingTrivia.ToFullString();
+            var firstMemberAccessExpressionTrivia = ((MemberAccessExpressionSyntax) node.GetFirstIdentifierName().Parent!)
+                .OperatorToken
+                .LeadingTrivia
+                .ToFullString();
+
             if (!string.IsNullOrEmpty(firstMemberAccessExpressionTrivia))
             {
                 return firstMemberAccessExpressionTrivia;
             }
 
             var secondMemberAccessExpressionTrivia = (node.GetFirstIdentifierName().Ancestors().Where(s => s.IsKind(SyntaxKind.SimpleMemberAccessExpression))
-                .Skip(1).FirstOrDefault() as MemberAccessExpressionSyntax)?.OperatorToken.LeadingTrivia.ToFullString();
-            if (!string.IsNullOrEmpty(secondMemberAccessExpressionTrivia))
+                    .Skip(1)
+                    .FirstOrDefault() as MemberAccessExpressionSyntax)?
+                .OperatorToken
+                .LeadingTrivia
+                .ToFullString();
+
+            if (string.IsNullOrEmpty(secondMemberAccessExpressionTrivia))
             {
-                return secondMemberAccessExpressionTrivia;
+                return string.Empty;
             }
 
-            return string.Empty;
+            return secondMemberAccessExpressionTrivia;
         }
 
         private static bool IsMultiLineStatement(SyntaxNode node)
         {
-            return node.GetFirstIdentifierName().GetTrailingTrivia().ToFullString().Contains(Environment.NewLine) ||
-                   (node.GetFirstIdentifierName().Parent!.Parent! as InvocationExpressionSyntax)?.ArgumentList.GetTrailingTrivia().ToFullString().Contains(Environment.NewLine) ==
-                   true;
+            return node.GetFirstIdentifierName()
+                       .GetTrailingTrivia()
+                       .ToFullString()
+                       .Contains(Environment.NewLine) ||
+                   (node.GetFirstIdentifierName().Parent!.Parent! as InvocationExpressionSyntax)?.ArgumentList
+                   .GetTrailingTrivia()
+                   .ToFullString()
+                   .Contains(Environment.NewLine) == true;
         }
 
         private static VariableDeclarationSyntax FormatVariableDeclaration(VariableDeclarationSyntax node)
@@ -244,8 +305,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
             var newLineCharacter = node.ArgumentList?.GetNewLineCharacter() ?? string.Empty;
             var indentation = node.ArgumentList?.GetIndentation() ?? string.Empty;
 
-            var genericNameSyntax = node.DescendantNodes().FirstOrDefault(n => n.IsKind(SyntaxKind.GenericName)) as GenericNameSyntax;
-            if (genericNameSyntax == null)
+            if (node.DescendantNodes().FirstOrDefault(n => n.IsKind(SyntaxKind.GenericName)) is not GenericNameSyntax genericNameSyntax)
             {
                 return node;
             }
@@ -304,7 +364,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
             string indentation,
             string newLineCharacter)
         {
-            for (var i = 0; i < separatedSyntaxList.Count; i++)
+            for (SyntaxNodePosition i = 0; i < separatedSyntaxList.Count; i++)
             {
                 var argument = separatedSyntaxList[i];
                 separatedSyntaxList = separatedSyntaxList
@@ -320,7 +380,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
         private static SeparatedSyntaxList<SyntaxNode> FormatSingleLineSyntaxNodeList(SeparatedSyntaxList<SyntaxNode> separatedSyntaxList)
         {
-            for (var i = 1; i < separatedSyntaxList.Count; i++)
+            for (SyntaxNodePosition i = 1; i < separatedSyntaxList.Count; i++)
             {
                 var item = separatedSyntaxList[i];
                 separatedSyntaxList = separatedSyntaxList
