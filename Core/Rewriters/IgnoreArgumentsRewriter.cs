@@ -109,22 +109,23 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                 .Select(s => (LambdaExpressionSyntax) s.Expression)
                 .SingleOrDefault();
 
-            if (lambdaExpression is null)
+            return lambdaExpression switch
             {
-                return argumentList;
-            }
+                null => argumentList,
+                _ when lambdaExpression.Body is InvocationExpressionSyntax invocationExpression
+                    => ConvertInvocationExpression(argumentList, lambdaExpression, invocationExpression),
+                _ => argumentList
+            };
+        }
 
-            if (lambdaExpression.Body is not InvocationExpressionSyntax invocationExpression)
-            {
-                return argumentList;
-            }
-
-            var methodSymbol = Model.GetSymbolInfo(invocationExpression).Symbol as IMethodSymbol;
+        private ArgumentListSyntax ConvertInvocationExpression(ArgumentListSyntax argumentList, LambdaExpressionSyntax lambdaExpression, InvocationExpressionSyntax invocationExpression)
+        {
+            var methodSymbol = Model.GetSymbolAs<IMethodSymbol>(invocationExpression);
             if (methodSymbol is null)
             {
                 return argumentList;
             }
-
+            
             var methodParameterTypeSymbols = methodSymbol.Parameters.Select(p => p.Type).ToArray();
             var isInArguments = methodParameterTypeSymbols.Select(
                 typeSymbol => MoqSyntaxFactory.IsAnyArgument(
