@@ -18,6 +18,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using RhinoMocksToMoqRewriter.Core.Extensions;
+using RhinoMocksToMoqRewriter.Core.Wrapper;
 
 namespace RhinoMocksToMoqRewriter.Core.Rewriters
 {
@@ -135,12 +136,14 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
             }
         }
 
-        private SeparatedSyntaxList<ExpressionSyntax> CreateNewExpressions(InitializerExpressionSyntax node, InitializerExpressionSyntax baseCallNode,
+        private SeparatedSyntaxList<ExpressionSyntax> CreateNewExpressions(
+            InitializerExpressionSyntax node,
+            InitializerExpressionSyntax baseCallNode,
             SeparatedSyntaxList<ExpressionSyntax> expressions)
         {
             var updateAbleExpressions = GetUpdateableExpressions(baseCallNode).ToList();
 
-            for (var i = 0; i < updateAbleExpressions.Count; i++)
+            for (SyntaxNodePosition i = 0; i < updateAbleExpressions.Count; i++)
             {
                 var expression = expressions[i];
                 expressions = UpdateExpressions(baseCallNode, expressions, i, expression);
@@ -154,10 +157,13 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
             return baseCallNode.Expressions.Where(s => CanUpdateExpression(baseCallNode, s));
         }
 
-        private static SeparatedSyntaxList<ExpressionSyntax> UpdateExpressions(InitializerExpressionSyntax baseCallNode, SeparatedSyntaxList<ExpressionSyntax> expressions, int i,
+        private static SeparatedSyntaxList<ExpressionSyntax> UpdateExpressions(
+            InitializerExpressionSyntax baseCallNode,
+            SeparatedSyntaxList<ExpressionSyntax> expressions,
+            SyntaxNodePosition position, // int i
             ExpressionSyntax expression)
         {
-            if (i == baseCallNode.Expressions.Count - 1)
+            if (position == baseCallNode.Expressions.Count - 1)
             {
                 return expressions.Replace(
                     expression,
