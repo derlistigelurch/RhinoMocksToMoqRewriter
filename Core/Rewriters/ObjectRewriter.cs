@@ -12,6 +12,7 @@
 // 
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -117,48 +118,67 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
         public override SyntaxNode? VisitInitializerExpression(InitializerExpressionSyntax node)
         {
             var trackedNodes = TrackNodes(node);
-
             var baseCallNode = (InitializerExpressionSyntax) base.VisitInitializerExpression(trackedNodes)!;
-            var newExpressions = baseCallNode.Expressions;
-            for (var i = 0; i < baseCallNode.Expressions.Count; i++)
+
+            try
             {
-                var expression = newExpressions[i];
-                if (expression is not IdentifierNameSyntax and not ObjectCreationExpressionSyntax)
-                {
-                    continue;
-                }
+                var newExpressions = CreateNewExpressions(node, baseCallNode, baseCallNode.Expressions);
+                return baseCallNode.WithExpressions(newExpressions);
+            }
+            catch
+            {
+                Console.Error.WriteLine(
+                    $"  WARNING: Unable to insert .Object"
+                    + $"\r\n  {node.SyntaxTree.FilePath} at line {node.GetLocation().GetMappedLineSpan().StartLinePosition.Line}");
 
-                var typeSymbol = Model.GetTypeInfo(baseCallNode.GetOriginalNode(expression, CompilationId)!).Type?.OriginalDefinition;
-                if (!MoqSymbols.GenericMoqSymbol.Equals(typeSymbol, SymbolEqualityComparer.Default))
-                {
-                    continue;
-                }
+                return node;
+            }
+        }
 
-                try
-                {
-                    if (i == baseCallNode.Expressions.Count - 1)
-                    {
-                        newExpressions = newExpressions.Replace(
-                            expression,
-                            MoqSyntaxFactory.MockObjectExpression(expression.WithoutTrailingTrivia())
-                                .WithTrailingTrivia(expression.GetTrailingTrivia()));
-                    }
-                    else
-                    {
-                        newExpressions = newExpressions.Replace(expression, MoqSyntaxFactory.MockObjectExpression(expression));
-                    }
-                }
-                catch (Exception)
-                {
-                    Console.Error.WriteLine(
-                        $"  WARNING: Unable to insert .Object"
-                        + $"\r\n  {node.SyntaxTree.FilePath} at line {node.GetLocation().GetMappedLineSpan().StartLinePosition.Line}");
-
-                    return baseCallNode;
-                }
+        private SeparatedSyntaxList<ExpressionSyntax> CreateNewExpressions(InitializerExpressionSyntax node, InitializerExpressionSyntax baseCallNode, SeparatedSyntaxList<ExpressionSyntax> expressions)
+        {
+            var updateAbleExpressions = GetUpdateableExpressions(baseCallNode).ToList();
+            
+            for (var i = 0; i < updateAbleExpressions.Count; i++)
+            {
+                var expression = expressions[i]; 
+                expressions = UpdateExpressions(baseCallNode, expressions, i, expression);
             }
 
-            return baseCallNode.WithExpressions(newExpressions);
+            return expressions;
+        }
+
+        private IEnumerable<ExpressionSyntax> GetUpdateableExpressions(InitializerExpressionSyntax baseCallNode)
+        {
+            return baseCallNode.Expressions.Where(s => CanUpdateExpression(baseCallNode, s));
+        }
+
+        private static SeparatedSyntaxList<ExpressionSyntax> UpdateExpressions(InitializerExpressionSyntax baseCallNode, SeparatedSyntaxList<ExpressionSyntax> expressions, int i, ExpressionSyntax expression)
+        {
+            if (i == baseCallNode.Expressions.Count - 1)
+            {
+                expressions = expressions.Replace(
+                    expression,
+                    MoqSyntaxFactory.MockObjectExpression(expression.WithoutTrailingTrivia())
+                        .WithTrailingTrivia(expression.GetTrailingTrivia()));
+            }
+            else
+            {
+                expressions = expressions.Replace(expression, MoqSyntaxFactory.MockObjectExpression(expression));
+            }
+
+            return expressions;
+        }
+
+        private bool CanUpdateExpression(SyntaxNode baseCallNode, ExpressionSyntax expression)
+        {
+            if (expression is not IdentifierNameSyntax and not ObjectCreationExpressionSyntax)
+            {
+                return false;
+            }
+
+            var typeSymbol = Model.GetTypeInfo(baseCallNode.GetOriginalNode(expression, CompilationId)!).Type?.OriginalDefinition;
+            return MoqSymbols.GenericMoqSymbol.Equals(typeSymbol, SymbolEqualityComparer.Default);
         }
 
         public override SyntaxNode? VisitAssignmentExpression(AssignmentExpressionSyntax node)
