@@ -135,13 +135,14 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
             }
         }
 
-        private SeparatedSyntaxList<ExpressionSyntax> CreateNewExpressions(InitializerExpressionSyntax node, InitializerExpressionSyntax baseCallNode, SeparatedSyntaxList<ExpressionSyntax> expressions)
+        private SeparatedSyntaxList<ExpressionSyntax> CreateNewExpressions(InitializerExpressionSyntax node, InitializerExpressionSyntax baseCallNode,
+            SeparatedSyntaxList<ExpressionSyntax> expressions)
         {
             var updateAbleExpressions = GetUpdateableExpressions(baseCallNode).ToList();
-            
+
             for (var i = 0; i < updateAbleExpressions.Count; i++)
             {
-                var expression = expressions[i]; 
+                var expression = expressions[i];
                 expressions = UpdateExpressions(baseCallNode, expressions, i, expression);
             }
 
@@ -153,22 +154,20 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
             return baseCallNode.Expressions.Where(s => CanUpdateExpression(baseCallNode, s));
         }
 
-        private static SeparatedSyntaxList<ExpressionSyntax> UpdateExpressions(InitializerExpressionSyntax baseCallNode, SeparatedSyntaxList<ExpressionSyntax> expressions, int i, ExpressionSyntax expression)
+        private static SeparatedSyntaxList<ExpressionSyntax> UpdateExpressions(InitializerExpressionSyntax baseCallNode, SeparatedSyntaxList<ExpressionSyntax> expressions, int i,
+            ExpressionSyntax expression)
         {
             if (i == baseCallNode.Expressions.Count - 1)
             {
-                expressions = expressions.Replace(
+                return expressions.Replace(
                     expression,
                     MoqSyntaxFactory.MockObjectExpression(expression.WithoutTrailingTrivia())
                         .WithTrailingTrivia(expression.GetTrailingTrivia()));
             }
-            else
-            {
-                expressions = expressions.Replace(expression, MoqSyntaxFactory.MockObjectExpression(expression));
-            }
 
-            return expressions;
+            return expressions.Replace(expression, MoqSyntaxFactory.MockObjectExpression(expression));
         }
+
 
         private bool CanUpdateExpression(SyntaxNode baseCallNode, ExpressionSyntax expression)
         {
