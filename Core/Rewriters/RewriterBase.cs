@@ -18,27 +18,27 @@ using Microsoft.CodeAnalysis.Editing;
 
 namespace RhinoMocksToMoqRewriter.Core.Rewriters
 {
-  public class RewriterBase : CSharpSyntaxRewriter
-  {
-    private SemanticModel? _model;
-    private SyntaxGenerator? _generator;
-
-    public SemanticModel Model
+    public class RewriterBase : CSharpSyntaxRewriter
     {
-      get => _model ?? throw new InvalidOperationException ("SemanticModel must not be null!");
-      set => _model = value;
+        private SemanticModel? _model;
+        private SyntaxGenerator? _generator;
+
+        public SemanticModel Model
+        {
+            get => _model ?? throw new InvalidOperationException("SemanticModel must not be null!");
+            set => _model = value;
+        }
+
+        public SyntaxGenerator Generator
+        {
+            get => _generator ?? throw new InvalidOperationException("SyntaxGenerator must not be null!");
+            set => _generator = value;
+        }
+
+        public Guid CompilationId { get; set; }
+
+        public RhinoMocksSymbols RhinoMocksSymbols { get; set; } = null!;
+
+        public MoqSymbols MoqSymbols { get; set; } = null!;
     }
-
-    public SyntaxGenerator Generator
-    {
-      get => _generator ?? throw new InvalidOperationException ("SyntaxGenerator must not be null!");
-      set => _generator = value;
-    }
-
-    public Guid CompilationId { get; set; }
-
-    public RhinoMocksSymbols RhinoMocksSymbols { get; set; } = null!;
-
-    public MoqSymbols MoqSymbols { get; set; } = null!;
-  }
 }

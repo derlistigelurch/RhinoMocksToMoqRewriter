@@ -17,8 +17,8 @@ using RhinoMocksToMoqRewriter.Core.Extensions;
 
 namespace RhinoMocksToMoqRewriter.Core.Rewriters.Strategies.ArgumentStrategies
 {
-  public class ArgIsNullArgumentRewriteStrategy : BaseArgumentRewriteStrategy<ArgIsNullArgumentRewriteStrategy>
-  {
-    public override ArgumentSyntax Rewrite (ArgumentSyntax node) => Formatter.MarkWithFormatAnnotation (MoqSyntaxFactory.NullArgument()).WithLeadingAndTrailingTriviaOfNode (node);
-  }
+    public class ArgIsNullArgumentRewriteStrategy : BaseArgumentRewriteStrategy<ArgIsNullArgumentRewriteStrategy>
+    {
+        public override ArgumentSyntax Rewrite(ArgumentSyntax node) => Formatter.MarkWithFormatAnnotation(MoqSyntaxFactory.NullArgument()).WithLeadingAndTrailingTriviaOfNode(node);
+    }
 }

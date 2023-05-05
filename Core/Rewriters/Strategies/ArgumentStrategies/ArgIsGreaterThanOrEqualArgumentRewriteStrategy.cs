@@ -17,15 +17,15 @@ using RhinoMocksToMoqRewriter.Core.Extensions;
 
 namespace RhinoMocksToMoqRewriter.Core.Rewriters.Strategies.ArgumentStrategies
 {
-  public class ArgIsGreaterThanOrEqualArgumentRewriteStrategy : BaseArgumentRewriteStrategy<ArgIsGreaterThanOrEqualArgumentRewriteStrategy>
-  {
-    public override ArgumentSyntax Rewrite (ArgumentSyntax node)
+    public class ArgIsGreaterThanOrEqualArgumentRewriteStrategy : BaseArgumentRewriteStrategy<ArgIsGreaterThanOrEqualArgumentRewriteStrategy>
     {
-      return Formatter.MarkWithFormatAnnotation (
-              MoqSyntaxFactory.IsGreaterThanOrEqualArgument (
-                  node.GetTypeArgumentList(),
-                  node.GetFirstArgument().Expression))
-          .WithLeadingAndTrailingTriviaOfNode (node);
+        public override ArgumentSyntax Rewrite(ArgumentSyntax node)
+        {
+            return Formatter.MarkWithFormatAnnotation(
+                    MoqSyntaxFactory.IsGreaterThanOrEqualArgument(
+                        node.GetTypeArgumentList(),
+                        node.GetFirstArgument().Expression))
+                .WithLeadingAndTrailingTriviaOfNode(node);
+        }
     }
-  }
 }

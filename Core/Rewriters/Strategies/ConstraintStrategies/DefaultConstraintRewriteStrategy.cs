@@ -13,10 +13,11 @@
 
 using System;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+
 namespace RhinoMocksToMoqRewriter.Core.Rewriters.Strategies.ConstraintStrategies
 {
-  public class DefaultConstraintRewriteStrategy : BaseConstraintRewriteStrategy<DefaultConstraintRewriteStrategy>
-  {
-    public override ExpressionSyntax Rewrite (ExpressionSyntax node) => node;
-  }
+    public class DefaultConstraintRewriteStrategy : BaseConstraintRewriteStrategy<DefaultConstraintRewriteStrategy>
+    {
+        public override ExpressionSyntax Rewrite(ExpressionSyntax node) => node;
+    }
 }

@@ -20,52 +20,52 @@ using RhinoMocksToMoqRewriter.Core.Extensions;
 
 namespace RhinoMocksToMoqRewriter.Core.Rewriters
 {
-  public class SetupResultForRewriter : RewriterBase
-  {
-    public override SyntaxNode? VisitExpressionStatement (ExpressionStatementSyntax node)
+    public class SetupResultForRewriter : RewriterBase
     {
-      var trackedNodes = node.Track (
-          node.DescendantNodesAndSelf().Where (
-              s => s.IsKind (SyntaxKind.SimpleMemberAccessExpression)
-                   || s.IsKind (SyntaxKind.ExpressionStatement)),
-          CompilationId);
-      var baseCallNode = (ExpressionStatementSyntax) base.VisitExpressionStatement (trackedNodes)!;
+        public override SyntaxNode? VisitExpressionStatement(ExpressionStatementSyntax node)
+        {
+            var trackedNodes = node.Track(
+                node.DescendantNodesAndSelf().Where(
+                    s => s.IsKind(SyntaxKind.SimpleMemberAccessExpression)
+                         || s.IsKind(SyntaxKind.ExpressionStatement)),
+                CompilationId);
+            var baseCallNode = (ExpressionStatementSyntax)base.VisitExpressionStatement(trackedNodes)!;
 
-      var setupResultForMemberAccessExpression = GetSetupResultForExpressionOrDefault (baseCallNode);
+            var setupResultForMemberAccessExpression = GetSetupResultForExpressionOrDefault(baseCallNode);
 
-      if (setupResultForMemberAccessExpression == null)
-      {
-        return baseCallNode;
-      }
+            if (setupResultForMemberAccessExpression == null)
+            {
+                return baseCallNode;
+            }
 
-      var mockedExpression = baseCallNode.GetCurrent (baseCallNode, CompilationId)!.GetFirstArgument();
-      var stubExpression = MoqSyntaxFactory.MemberAccessExpression (mockedExpression.GetFirstIdentifierName(), MoqSyntaxFactory.StubIdentifierName);
-      var stubArgumentList = MoqSyntaxFactory.SimpleArgumentList (
-          MoqSyntaxFactory.SimpleLambdaExpression (
-              mockedExpression.Expression.ReplaceNode (
-                  mockedExpression.GetFirstIdentifierName(),
-                  MoqSyntaxFactory.LambdaParameterIdentifierName)));
+            var mockedExpression = baseCallNode.GetCurrent(baseCallNode, CompilationId)!.GetFirstArgument();
+            var stubExpression = MoqSyntaxFactory.MemberAccessExpression(mockedExpression.GetFirstIdentifierName(), MoqSyntaxFactory.StubIdentifierName);
+            var stubArgumentList = MoqSyntaxFactory.SimpleArgumentList(
+                MoqSyntaxFactory.SimpleLambdaExpression(
+                    mockedExpression.Expression.ReplaceNode(
+                        mockedExpression.GetFirstIdentifierName(),
+                        MoqSyntaxFactory.LambdaParameterIdentifierName)));
 
-      var currentSetupResultForInvocationExpression = baseCallNode.GetCurrent (setupResultForMemberAccessExpression, CompilationId)!.Parent!;
-      var rewrittenExpression = baseCallNode.ReplaceNode (
-          currentSetupResultForInvocationExpression!,
-          MoqSyntaxFactory.InvocationExpression (stubExpression, stubArgumentList));
+            var currentSetupResultForInvocationExpression = baseCallNode.GetCurrent(setupResultForMemberAccessExpression, CompilationId)!.Parent!;
+            var rewrittenExpression = baseCallNode.ReplaceNode(
+                currentSetupResultForInvocationExpression!,
+                MoqSyntaxFactory.InvocationExpression(stubExpression, stubArgumentList));
 
-      return baseCallNode.WithExpression (
-              Formatter.MarkWithFormatAnnotation (
-                  MoqSyntaxFactory.RepeatAnyExpressionStatement (
-                      rewrittenExpression.Expression)))
-          .WithLeadingAndTrailingTriviaOfNode (node);
+            return baseCallNode.WithExpression(
+                    Formatter.MarkWithFormatAnnotation(
+                        MoqSyntaxFactory.RepeatAnyExpressionStatement(
+                            rewrittenExpression.Expression)))
+                .WithLeadingAndTrailingTriviaOfNode(node);
+        }
+
+        private SyntaxNode? GetSetupResultForExpressionOrDefault(ExpressionStatementSyntax baseCallNode)
+        {
+            return baseCallNode.DescendantNodes()
+                .Where(s => s.IsKind(SyntaxKind.SimpleMemberAccessExpression))
+                .SingleOrDefault(
+                    s => baseCallNode.GetOriginal(s, CompilationId) is { } originalNode
+                         && Model.GetSymbolInfo(originalNode).Symbol?.OriginalDefinition is { } symbol
+                         && RhinoMocksSymbols.SetupResultForSymbols.Contains(symbol, SymbolEqualityComparer.Default));
+        }
     }
-
-    private SyntaxNode? GetSetupResultForExpressionOrDefault (ExpressionStatementSyntax baseCallNode)
-    {
-      return baseCallNode.DescendantNodes()
-          .Where (s => s.IsKind (SyntaxKind.SimpleMemberAccessExpression))
-          .SingleOrDefault (
-              s => baseCallNode.GetOriginal (s, CompilationId) is { } originalNode
-                   && Model.GetSymbolInfo (originalNode).Symbol?.OriginalDefinition is { } symbol
-                   && RhinoMocksSymbols.SetupResultForSymbols.Contains (symbol, SymbolEqualityComparer.Default));
-    }
-  }
 }

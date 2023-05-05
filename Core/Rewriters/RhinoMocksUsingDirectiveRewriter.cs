@@ -19,22 +19,22 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace RhinoMocksToMoqRewriter.Core.Rewriters
 {
-  public class RhinoMocksUsingDirectiveRewriter : RewriterBase
-  {
-    public override SyntaxNode? VisitCompilationUnit (CompilationUnitSyntax node)
+    public class RhinoMocksUsingDirectiveRewriter : RewriterBase
     {
-      var usingsWithoutRhinoMocksUsings = node.Usings.Where (s => !s.ToFullString().Contains ("Rhino.Mocks")).ToList();
-      if (node.Usings.Last().ToFullString().Contains ("Rhino.Mocks"))
-      {
-        var lastUsingDirective = usingsWithoutRhinoMocksUsings.Last();
-        usingsWithoutRhinoMocksUsings.Remove (lastUsingDirective);
-        usingsWithoutRhinoMocksUsings.Insert (
-            usingsWithoutRhinoMocksUsings.Count,
-            lastUsingDirective.WithTrailingTrivia (
-                SyntaxFactory.Whitespace (Environment.NewLine)));
-      }
+        public override SyntaxNode? VisitCompilationUnit(CompilationUnitSyntax node)
+        {
+            var usingsWithoutRhinoMocksUsings = node.Usings.Where(s => !s.ToFullString().Contains("Rhino.Mocks")).ToList();
+            if (node.Usings.Last().ToFullString().Contains("Rhino.Mocks"))
+            {
+                var lastUsingDirective = usingsWithoutRhinoMocksUsings.Last();
+                usingsWithoutRhinoMocksUsings.Remove(lastUsingDirective);
+                usingsWithoutRhinoMocksUsings.Insert(
+                    usingsWithoutRhinoMocksUsings.Count,
+                    lastUsingDirective.WithTrailingTrivia(
+                        SyntaxFactory.Whitespace(Environment.NewLine)));
+            }
 
-      return node.WithUsings (new SyntaxList<UsingDirectiveSyntax> (usingsWithoutRhinoMocksUsings));
+            return node.WithUsings(new SyntaxList<UsingDirectiveSyntax>(usingsWithoutRhinoMocksUsings));
+        }
     }
-  }
 }

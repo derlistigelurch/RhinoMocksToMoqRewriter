@@ -21,59 +21,59 @@ using RhinoMocksToMoqRewriter.Core.Rewriters.Strategies.ConstraintStrategies;
 
 namespace RhinoMocksToMoqRewriter.Core.Rewriters
 {
-  public class ConstraintRewriter : RewriterBase
-  {
-    public override SyntaxNode? VisitArgument (ArgumentSyntax node)
+    public class ConstraintRewriter : RewriterBase
     {
-      var baseCallNode = (ArgumentSyntax) base.VisitArgument (node)!;
-      if (node.Expression is not InvocationExpressionSyntax invocationExpression)
-      {
-        return baseCallNode;
-      }
-
-      var symbol = Model.GetSymbolInfo (invocationExpression).Symbol?.OriginalDefinition;
-      if (!RhinoMocksSymbols.ArgMatchesSymbols.Contains (symbol, SymbolEqualityComparer.Default))
-      {
-        return baseCallNode;
-      }
-
-      if (invocationExpression.ArgumentList.Arguments.First().Expression is LambdaExpressionSyntax)
-      {
-        return baseCallNode;
-      }
-
-      return MoqSyntaxFactory.SimpleArgument (
-          invocationExpression.WithArgumentList (
-              MoqSyntaxFactory.SimpleArgumentList (
-                  MoqSyntaxFactory.SimpleLambdaExpression (
-                      Formatter.MarkWithFormatAnnotation (
-                          ConvertExpression (invocationExpression.ArgumentList.GetFirstArgument().Expression))))));
-    }
-
-    private ExpressionSyntax ConvertExpression (ExpressionSyntax expression)
-    {
-      if (expression is BinaryExpressionSyntax binaryExpression)
-      {
-        var left = ConvertExpression (binaryExpression.Left);
-        var right = ConvertExpression (binaryExpression.Right);
-        if (binaryExpression.OperatorToken.IsKind (SyntaxKind.AmpersandToken))
+        public override SyntaxNode? VisitArgument(ArgumentSyntax node)
         {
-          return MoqSyntaxFactory.LogicalAndBinaryExpression (left, right);
+            var baseCallNode = (ArgumentSyntax)base.VisitArgument(node)!;
+            if (node.Expression is not InvocationExpressionSyntax invocationExpression)
+            {
+                return baseCallNode;
+            }
+
+            var symbol = Model.GetSymbolInfo(invocationExpression).Symbol?.OriginalDefinition;
+            if (!RhinoMocksSymbols.ArgMatchesSymbols.Contains(symbol, SymbolEqualityComparer.Default))
+            {
+                return baseCallNode;
+            }
+
+            if (invocationExpression.ArgumentList.Arguments.First().Expression is LambdaExpressionSyntax)
+            {
+                return baseCallNode;
+            }
+
+            return MoqSyntaxFactory.SimpleArgument(
+                invocationExpression.WithArgumentList(
+                    MoqSyntaxFactory.SimpleArgumentList(
+                        MoqSyntaxFactory.SimpleLambdaExpression(
+                            Formatter.MarkWithFormatAnnotation(
+                                ConvertExpression(invocationExpression.ArgumentList.GetFirstArgument().Expression))))));
         }
 
-        if (binaryExpression.OperatorToken.IsKind (SyntaxKind.BarToken))
+        private ExpressionSyntax ConvertExpression(ExpressionSyntax expression)
         {
-          return MoqSyntaxFactory.LogicalOrBinaryExpression (left, right);
+            if (expression is BinaryExpressionSyntax binaryExpression)
+            {
+                var left = ConvertExpression(binaryExpression.Left);
+                var right = ConvertExpression(binaryExpression.Right);
+                if (binaryExpression.OperatorToken.IsKind(SyntaxKind.AmpersandToken))
+                {
+                    return MoqSyntaxFactory.LogicalAndBinaryExpression(left, right);
+                }
+
+                if (binaryExpression.OperatorToken.IsKind(SyntaxKind.BarToken))
+                {
+                    return MoqSyntaxFactory.LogicalOrBinaryExpression(left, right);
+                }
+            }
+
+            if (expression is not InvocationExpressionSyntax invocationExpression)
+            {
+                return expression;
+            }
+
+            var strategy = ConstraintRewriteStrategyFactory.GetRewriteStrategy(invocationExpression, Model, RhinoMocksSymbols);
+            return strategy.Rewrite(invocationExpression);
         }
-      }
-
-      if (expression is not InvocationExpressionSyntax invocationExpression)
-      {
-        return expression;
-      }
-
-      var strategy = ConstraintRewriteStrategyFactory.GetRewriteStrategy (invocationExpression, Model, RhinoMocksSymbols);
-      return strategy.Rewrite (invocationExpression);
     }
-  }
 }

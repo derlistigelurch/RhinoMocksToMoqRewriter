@@ -16,63 +16,64 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+
 namespace RhinoMocksToMoqRewriter.Core.Rewriters.Strategies.ConstraintStrategies
 {
-  public static class ConstraintRewriteStrategyFactory
-  {
-    public static IConstraintRewriteStrategy GetRewriteStrategy (ExpressionSyntax node, SemanticModel model, RhinoMocksSymbols rhinoMocksSymbols)
+    public static class ConstraintRewriteStrategyFactory
     {
-      var symbol = model.GetSymbolInfo (node).Symbol;
-      if (symbol == null)
-      {
-        return DefaultConstraintRewriteStrategy.Instance;
-      }
+        public static IConstraintRewriteStrategy GetRewriteStrategy(ExpressionSyntax node, SemanticModel model, RhinoMocksSymbols rhinoMocksSymbols)
+        {
+            var symbol = model.GetSymbolInfo(node).Symbol;
+            if (symbol == null)
+            {
+                return DefaultConstraintRewriteStrategy.Instance;
+            }
 
-      if (IsNotAutomaticallyRewritable (node, symbol, model, rhinoMocksSymbols))
-      {
-        Console.Error.WriteLine (
-            $"  WARNING: Unable to convert Rhino.Mocks.Constraints.Property.Value or Rhino.Mocks.Constraints.Is.NotNull\r\n"
-            + $"  {node.SyntaxTree.FilePath} at line {node.GetLocation().GetMappedLineSpan().StartLinePosition.Line}");
+            if (IsNotAutomaticallyRewritable(node, symbol, model, rhinoMocksSymbols))
+            {
+                Console.Error.WriteLine(
+                    $"  WARNING: Unable to convert Rhino.Mocks.Constraints.Property.Value or Rhino.Mocks.Constraints.Is.NotNull\r\n"
+                    + $"  {node.SyntaxTree.FilePath} at line {node.GetLocation().GetMappedLineSpan().StartLinePosition.Line}");
 
-        return DefaultConstraintRewriteStrategy.Instance;
-      }
+                return DefaultConstraintRewriteStrategy.Instance;
+            }
 
-      return symbol switch
-      {
-          _ when rhinoMocksSymbols.ConstraintIsEqualSymbols.Contains (symbol) => IsEqualConstraintRewriteStrategy.Instance,
-          _ when rhinoMocksSymbols.ConstraintIsNotEqualSymbols.Contains (symbol) => IsNotEqualConstraintRewriteStrategy.Instance,
-          _ when rhinoMocksSymbols.ConstraintIsSameSymbols.Contains (symbol) => IsSameConstraintRewriteStrategy.Instance,
-          _ when rhinoMocksSymbols.ConstraintIsNotSameSymbols.Contains (symbol) => IsNotSameConstraintRewriteStrategy.Instance,
-          _ when rhinoMocksSymbols.ConstraintIsNullSymbols.Contains (symbol) => IsNullConstraintRewriteStrategy.Instance,
-          _ when rhinoMocksSymbols.ConstraintIsNotNullSymbols.Contains (symbol) => IsNotNullConstraintRewriteStrategy.Instance,
-          _ when rhinoMocksSymbols.ConstraintIsGreaterThanSymbols.Contains (symbol) => IsGreaterThanConstraintRewriteStrategy.Instance,
-          _ when rhinoMocksSymbols.ConstraintIsGreaterThanOrEqualSymbols.Contains (symbol) => IsGreaterThanOrEqualConstraintRewriteStrategy.Instance,
-          _ when rhinoMocksSymbols.ConstraintIsLessThanSymbols.Contains (symbol) => IsLessThanConstraintRewriteStrategy.Instance,
-          _ when rhinoMocksSymbols.ConstraintIsLessThanOrEqualSymbols.Contains (symbol) => IsLessThanOrEqualConstraintRewriteStrategy.Instance,
-          _ when rhinoMocksSymbols.ConstraintListIsInSymbols.Contains (symbol) => ListIsInConstraintRewriteStrategy.Instance,
-          _ when rhinoMocksSymbols.ConstraintListContainsAllSymbols.Contains (symbol) => ListContainsAllConstraintRewriteStrategy.Instance,
-          _ when rhinoMocksSymbols.ConstraintPropertyValueSymbols.Contains (symbol) => PropertyValueConstraintRewriteStrategy.Instance,
-          _ => DefaultConstraintRewriteStrategy.Instance
-      };
+            return symbol switch
+            {
+                _ when rhinoMocksSymbols.ConstraintIsEqualSymbols.Contains(symbol) => IsEqualConstraintRewriteStrategy.Instance,
+                _ when rhinoMocksSymbols.ConstraintIsNotEqualSymbols.Contains(symbol) => IsNotEqualConstraintRewriteStrategy.Instance,
+                _ when rhinoMocksSymbols.ConstraintIsSameSymbols.Contains(symbol) => IsSameConstraintRewriteStrategy.Instance,
+                _ when rhinoMocksSymbols.ConstraintIsNotSameSymbols.Contains(symbol) => IsNotSameConstraintRewriteStrategy.Instance,
+                _ when rhinoMocksSymbols.ConstraintIsNullSymbols.Contains(symbol) => IsNullConstraintRewriteStrategy.Instance,
+                _ when rhinoMocksSymbols.ConstraintIsNotNullSymbols.Contains(symbol) => IsNotNullConstraintRewriteStrategy.Instance,
+                _ when rhinoMocksSymbols.ConstraintIsGreaterThanSymbols.Contains(symbol) => IsGreaterThanConstraintRewriteStrategy.Instance,
+                _ when rhinoMocksSymbols.ConstraintIsGreaterThanOrEqualSymbols.Contains(symbol) => IsGreaterThanOrEqualConstraintRewriteStrategy.Instance,
+                _ when rhinoMocksSymbols.ConstraintIsLessThanSymbols.Contains(symbol) => IsLessThanConstraintRewriteStrategy.Instance,
+                _ when rhinoMocksSymbols.ConstraintIsLessThanOrEqualSymbols.Contains(symbol) => IsLessThanOrEqualConstraintRewriteStrategy.Instance,
+                _ when rhinoMocksSymbols.ConstraintListIsInSymbols.Contains(symbol) => ListIsInConstraintRewriteStrategy.Instance,
+                _ when rhinoMocksSymbols.ConstraintListContainsAllSymbols.Contains(symbol) => ListContainsAllConstraintRewriteStrategy.Instance,
+                _ when rhinoMocksSymbols.ConstraintPropertyValueSymbols.Contains(symbol) => PropertyValueConstraintRewriteStrategy.Instance,
+                _ => DefaultConstraintRewriteStrategy.Instance
+            };
+        }
+
+        private static bool IsNotAutomaticallyRewritable(ExpressionSyntax node, ISymbol symbol, SemanticModel model, RhinoMocksSymbols rhinoMocksSymbols)
+        {
+            if (node.Parent is not BinaryExpressionSyntax parentBinaryExpression)
+            {
+                return false;
+            }
+
+            var nextExpressionSymbol = model.GetSymbolInfo(parentBinaryExpression.Right).Symbol;
+            if (node.IsEquivalentTo(parentBinaryExpression.Right, false))
+            {
+                nextExpressionSymbol = model.GetSymbolInfo(parentBinaryExpression.Left).Symbol;
+            }
+
+            return (rhinoMocksSymbols.ConstraintPropertyValueSymbols.Contains(symbol, SymbolEqualityComparer.Default)
+                    || rhinoMocksSymbols.ConstraintIsNotNullSymbols.Contains(symbol, SymbolEqualityComparer.Default))
+                   && (rhinoMocksSymbols.ConstraintPropertyValueSymbols.Contains(nextExpressionSymbol, SymbolEqualityComparer.Default)
+                       || rhinoMocksSymbols.ConstraintIsNotNullSymbols.Contains(nextExpressionSymbol, SymbolEqualityComparer.Default));
+        }
     }
-
-    private static bool IsNotAutomaticallyRewritable (ExpressionSyntax node, ISymbol symbol, SemanticModel model, RhinoMocksSymbols rhinoMocksSymbols)
-    {
-      if (node.Parent is not BinaryExpressionSyntax parentBinaryExpression)
-      {
-        return false;
-      }
-
-      var nextExpressionSymbol = model.GetSymbolInfo (parentBinaryExpression.Right).Symbol;
-      if (node.IsEquivalentTo (parentBinaryExpression.Right, false))
-      {
-        nextExpressionSymbol = model.GetSymbolInfo (parentBinaryExpression.Left).Symbol;
-      }
-
-      return (rhinoMocksSymbols.ConstraintPropertyValueSymbols.Contains (symbol, SymbolEqualityComparer.Default)
-              || rhinoMocksSymbols.ConstraintIsNotNullSymbols.Contains (symbol, SymbolEqualityComparer.Default))
-             && (rhinoMocksSymbols.ConstraintPropertyValueSymbols.Contains (nextExpressionSymbol, SymbolEqualityComparer.Default)
-                 || rhinoMocksSymbols.ConstraintIsNotNullSymbols.Contains (nextExpressionSymbol, SymbolEqualityComparer.Default));
-    }
-  }
 }

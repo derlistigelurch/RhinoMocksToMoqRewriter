@@ -17,22 +17,22 @@ using Microsoft.CodeAnalysis.CSharp;
 
 namespace RhinoMocksToMoqRewriter.Core.Extensions
 {
-  public static class CSharpCompilationExtensions
-  {
-    public static CSharpCompilation UpdateCompilation (this CSharpCompilation thisCompilation, Compilation compilation)
+    public static class CSharpCompilationExtensions
     {
-      return CSharpCompilation.Create (
-          compilation.AssemblyName,
-          compilation.SyntaxTrees,
-          compilation.References,
-          compilation.Options as CSharpCompilationOptions);
-    }
+        public static CSharpCompilation UpdateCompilation(this CSharpCompilation thisCompilation, Compilation compilation)
+        {
+            return CSharpCompilation.Create(
+                compilation.AssemblyName,
+                compilation.SyntaxTrees,
+                compilation.References,
+                compilation.Options as CSharpCompilationOptions);
+        }
 
-    public static CSharpCompilation ReplaceSyntaxTreeAndUpdateCompilation (this CSharpCompilation thisCompilation, SyntaxTree oldTree, SyntaxTree newTree)
-    {
-      var newCompilation = thisCompilation.ReplaceSyntaxTree (oldTree, newTree);
+        public static CSharpCompilation ReplaceSyntaxTreeAndUpdateCompilation(this CSharpCompilation thisCompilation, SyntaxTree oldTree, SyntaxTree newTree)
+        {
+            var newCompilation = thisCompilation.ReplaceSyntaxTree(oldTree, newTree);
 
-      return newCompilation.UpdateCompilation (newCompilation);
+            return newCompilation.UpdateCompilation(newCompilation);
+        }
     }
-  }
 }

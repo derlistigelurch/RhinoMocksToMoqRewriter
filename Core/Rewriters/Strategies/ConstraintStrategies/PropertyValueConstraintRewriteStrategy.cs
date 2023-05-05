@@ -14,22 +14,23 @@
 using System;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using RhinoMocksToMoqRewriter.Core.Extensions;
+
 namespace RhinoMocksToMoqRewriter.Core.Rewriters.Strategies.ConstraintStrategies
 {
-  public class PropertyValueConstraintRewriteStrategy : BaseConstraintRewriteStrategy<PropertyValueConstraintRewriteStrategy>
-  {
-    public override ExpressionSyntax Rewrite (ExpressionSyntax node)
+    public class PropertyValueConstraintRewriteStrategy : BaseConstraintRewriteStrategy<PropertyValueConstraintRewriteStrategy>
     {
-      var propertyName = (node as InvocationExpressionSyntax)?.ArgumentList.Arguments.First().Expression;
-      var propertyValue = (node as InvocationExpressionSyntax)?.ArgumentList.Arguments.Last().Expression;
-      if (propertyName == null || propertyValue == null)
-      {
-        throw new InvalidOperationException ("Unable to get name or value from property");
-      }
+        public override ExpressionSyntax Rewrite(ExpressionSyntax node)
+        {
+            var propertyName = (node as InvocationExpressionSyntax)?.ArgumentList.Arguments.First().Expression;
+            var propertyValue = (node as InvocationExpressionSyntax)?.ArgumentList.Arguments.Last().Expression;
+            if (propertyName == null || propertyValue == null)
+            {
+                throw new InvalidOperationException("Unable to get name or value from property");
+            }
 
-      return Formatter.MarkWithFormatAnnotation (
-              MoqSyntaxFactory.PropertyValueBinaryExpression (propertyName, propertyValue))
-          .WithLeadingAndTrailingTriviaOfNode (node);
+            return Formatter.MarkWithFormatAnnotation(
+                    MoqSyntaxFactory.PropertyValueBinaryExpression(propertyName, propertyValue))
+                .WithLeadingAndTrailingTriviaOfNode(node);
+        }
     }
-  }
 }

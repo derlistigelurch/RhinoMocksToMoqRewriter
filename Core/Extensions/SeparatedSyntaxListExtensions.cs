@@ -16,13 +16,13 @@ using Microsoft.CodeAnalysis;
 
 namespace RhinoMocksToMoqRewriter.Core.Extensions
 {
-  public static class SeparatedSyntaxListExtensions
-  {
-    private const string c_carriageReturnLineFeed = "\r\n";
-    private const string c_lineFeed = "\n";
+    public static class SeparatedSyntaxListExtensions
+    {
+        private const string c_carriageReturnLineFeed = "\r\n";
+        private const string c_lineFeed = "\n";
 
-    public static bool HasMultiLineItems<T> (this SeparatedSyntaxList<T> separatedList)
-        where T : SyntaxNode
-      => separatedList.ToFullString().Contains (c_carriageReturnLineFeed) || separatedList.ToFullString().Contains (c_lineFeed);
-  }
+        public static bool HasMultiLineItems<T>(this SeparatedSyntaxList<T> separatedList)
+            where T : SyntaxNode
+            => separatedList.ToFullString().Contains(c_carriageReturnLineFeed) || separatedList.ToFullString().Contains(c_lineFeed);
+    }
 }

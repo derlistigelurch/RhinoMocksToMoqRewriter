@@ -10,6 +10,7 @@
 // FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
 // WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
+
 using System;
 using System.Linq;
 using Microsoft.CodeAnalysis;
@@ -17,45 +18,46 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Editing;
 using RhinoMocksToMoqRewriter.Core.Rewriters;
+
 namespace RhinoMocksToMoqRewriter.Core
 {
-  public static class TypeSymbolToTypeSyntaxConverter
-  {
-    public static TypeSyntax ConvertTypeSyntaxNodes (ITypeSymbol typeSymbol, SyntaxGenerator generator)
+    public static class TypeSymbolToTypeSyntaxConverter
     {
-      if (typeSymbol.NullableAnnotation == NullableAnnotation.Annotated)
-      {
-        return typeSymbol switch
+        public static TypeSyntax ConvertTypeSyntaxNodes(ITypeSymbol typeSymbol, SyntaxGenerator generator)
         {
-            IArrayTypeSymbol arrayTypeSymbol => (TypeSyntax) MoqSyntaxFactory.ArrayType (
-                (TypeSyntax) generator.NullableTypeExpression (
-                    ConvertTypeSyntaxNodes ((arrayTypeSymbol).ElementType, generator))),
-            _ => (TypeSyntax) generator.NullableTypeExpression (ConvertTypeSyntaxNodes (((INamedTypeSymbol) typeSymbol).TypeArguments.FirstOrDefault()
-                                                                                        ?? (INamedTypeSymbol) typeSymbol.OriginalDefinition, generator))
-        };
-      }
+            if (typeSymbol.NullableAnnotation == NullableAnnotation.Annotated)
+            {
+                return typeSymbol switch
+                {
+                    IArrayTypeSymbol arrayTypeSymbol => (TypeSyntax)MoqSyntaxFactory.ArrayType(
+                        (TypeSyntax)generator.NullableTypeExpression(
+                            ConvertTypeSyntaxNodes((arrayTypeSymbol).ElementType, generator))),
+                    _ => (TypeSyntax)generator.NullableTypeExpression(ConvertTypeSyntaxNodes(((INamedTypeSymbol)typeSymbol).TypeArguments.FirstOrDefault()
+                                                                                             ?? (INamedTypeSymbol)typeSymbol.OriginalDefinition, generator))
+                };
+            }
 
-      if (typeSymbol.SpecialType != SpecialType.None)
-      {
-        try
-        {
-          return (PredefinedTypeSyntax) generator.TypeExpression (typeSymbol.SpecialType);
-        }
-        catch (Exception)
-        {
-          return (QualifiedNameSyntax) generator.TypeExpression (typeSymbol);
-        }
-      }
+            if (typeSymbol.SpecialType != SpecialType.None)
+            {
+                try
+                {
+                    return (PredefinedTypeSyntax)generator.TypeExpression(typeSymbol.SpecialType);
+                }
+                catch (Exception)
+                {
+                    return (QualifiedNameSyntax)generator.TypeExpression(typeSymbol);
+                }
+            }
 
-      return typeSymbol switch
-      {
-          INamedTypeSymbol { TypeArguments: { IsEmpty: true } } => SyntaxFactory.IdentifierName (typeSymbol.Name),
-          IArrayTypeSymbol arrayTypeSymbol => MoqSyntaxFactory.ArrayType (ConvertTypeSyntaxNodes (arrayTypeSymbol.ElementType, generator)),
-          ITypeParameterSymbol => SyntaxFactory.IdentifierName (typeSymbol.Name),
-          _ => MoqSyntaxFactory.GenericName (
-              SyntaxFactory.Identifier (typeSymbol.Name),
-              MoqSyntaxFactory.SimpleTypeArgumentList (((INamedTypeSymbol) typeSymbol).TypeArguments.Select (s => ConvertTypeSyntaxNodes (s, generator))))
-      };
+            return typeSymbol switch
+            {
+                INamedTypeSymbol { TypeArguments: { IsEmpty: true } } => SyntaxFactory.IdentifierName(typeSymbol.Name),
+                IArrayTypeSymbol arrayTypeSymbol => MoqSyntaxFactory.ArrayType(ConvertTypeSyntaxNodes(arrayTypeSymbol.ElementType, generator)),
+                ITypeParameterSymbol => SyntaxFactory.IdentifierName(typeSymbol.Name),
+                _ => MoqSyntaxFactory.GenericName(
+                    SyntaxFactory.Identifier(typeSymbol.Name),
+                    MoqSyntaxFactory.SimpleTypeArgumentList(((INamedTypeSymbol)typeSymbol).TypeArguments.Select(s => ConvertTypeSyntaxNodes(s, generator))))
+            };
+        }
     }
-  }
 }
