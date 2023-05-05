@@ -28,7 +28,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
       BlockSyntax trackedNodes = null!;
       try
       {
-        trackedNodes = node.TrackNodes (node.DescendantNodes().OfType<StatementSyntax>(), CompilationId);
+        trackedNodes = node.Track (node.DescendantNodes().OfType<StatementSyntax>(), CompilationId);
       }
       catch (Exception)
       {
@@ -54,7 +54,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
       var nodesToBeRemoved = new List<SyntaxNode>();
       foreach (var lastCallExpressionStatement in lastCallExpressionStatementsInBlock)
       {
-        var currentNode = baseCallNode.GetCurrentNode (lastCallExpressionStatement.Node, CompilationId)!;
+        var currentNode = baseCallNode.GetCurrent (lastCallExpressionStatement.Node, CompilationId)!;
         var lastCalledMock = GetLastCalledMockExpressionStatement (baseCallNode, lastCallExpressionStatement);
         if (lastCalledMock == null)
         {
@@ -70,7 +70,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
         baseCallNode = baseCallNode.ReplaceNode (currentNode, newExpressionStatement.WithLeadingAndTrailingTriviaOfNode (currentNode));
       }
 
-      baseCallNode = baseCallNode.RemoveNodes (nodesToBeRemoved.Select (s => baseCallNode.GetCurrentNode (s, CompilationId)!), SyntaxRemoveOptions.KeepNoTrivia);
+      baseCallNode = baseCallNode.RemoveNodes (nodesToBeRemoved.Select (s => baseCallNode.GetCurrent (s, CompilationId)!), SyntaxRemoveOptions.KeepNoTrivia);
 
       return baseCallNode;
     }
@@ -82,7 +82,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
           .Select (s => (ExpressionStatementSyntax) s)
           .Select ((syntaxNode, index) => new { node = syntaxNode, index })
           .Where (
-              s => Model.GetSymbolInfo (node.GetOriginalNode (s.node, CompilationId)!.Expression).Symbol is { } symbol
+              s => Model.GetSymbolInfo (node.GetOriginal (s.node, CompilationId)!.Expression).Symbol is { } symbol
                    && RhinoMocksSymbols.RhinoMocksLastCallSymbol.Equals (symbol.OriginalDefinition.ContainingSymbol, SymbolEqualityComparer.Default))
           .Select (s => (s.node, s.index));
     }
@@ -95,7 +95,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
       return lastCalledExpressions
           .Select ((syntaxNode, index) => new { node = syntaxNode, index })
           .LastOrDefault (
-              e => Model.GetSymbolInfo (node.GetOriginalNode (e.node, CompilationId)!.GetFirstIdentifierName()).Symbol is { } symbol
+              e => Model.GetSymbolInfo (node.GetOriginal (e.node, CompilationId)!.GetFirstIdentifierName()).Symbol is { } symbol
                    && reachableAndContainedMockSymbols.Contains (symbol)
                    && e.index < lastCallExpressionStatement.Index)?.node as ExpressionStatementSyntax;
     }
@@ -107,7 +107,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
     private IEnumerable<ISymbol> GetLocalMockSymbolsInAncestorsAndSelf (BlockSyntax node)
     {
-      return node.GetOriginalNode (node.Statements.First(), CompilationId)!.AncestorsAndSelf()
+      return node.GetOriginal (node.Statements.First(), CompilationId)!.AncestorsAndSelf()
           .Where (s => s.IsKind (SyntaxKind.Block))
           .Select (s => (BlockSyntax) s)
           .SelectMany (GetLocalMockSymbols);
@@ -132,7 +132,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
     private IEnumerable<ISymbol> GetAllMockFieldAssignmentExpressions (BlockSyntax node)
     {
-      return node.GetOriginalNode (node.Statements.First(), CompilationId)!.SyntaxTree.GetRoot().DescendantNodes()
+      return node.GetOriginal (node.Statements.First(), CompilationId)!.SyntaxTree.GetRoot().DescendantNodes()
           .Where (s => s.IsKind (SyntaxKind.ExpressionStatement))
           .Select (s => (ExpressionStatementSyntax) s)
           .Where (s => s.Expression.IsKind (SyntaxKind.SimpleAssignmentExpression))
@@ -146,7 +146,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
     private IEnumerable<ISymbol> GetAllMockFieldDeclarations (BlockSyntax node)
     {
-      return node.GetOriginalNode (node.Statements.First(), CompilationId)!.SyntaxTree.GetRoot().DescendantNodes()
+      return node.GetOriginal (node.Statements.First(), CompilationId)!.SyntaxTree.GetRoot().DescendantNodes()
           .Where (s => s.IsKind (SyntaxKind.FieldDeclaration))
           .Select (s => (FieldDeclarationSyntax) s)
           .Select (s => s.Declaration.Variables)

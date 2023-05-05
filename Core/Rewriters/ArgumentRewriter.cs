@@ -24,9 +24,9 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
   {
     public override SyntaxNode? VisitArgument (ArgumentSyntax node)
     {
-      var trackedNodes = node.TrackNodes (node.DescendantNodesAndSelf().Where (s => s.IsKind (SyntaxKind.Argument)), CompilationId);
+      var trackedNodes = node.Track (node.DescendantNodesAndSelf().Where (s => s.IsKind (SyntaxKind.Argument)), CompilationId);
       var baseCallNode = (ArgumentSyntax) base.VisitArgument (trackedNodes)!;
-      var strategy = ArgumentRewriteStrategyFactory.GetRewriteStrategy (baseCallNode.GetOriginalNode (baseCallNode, CompilationId)!, Model, RhinoMocksSymbols);
+      var strategy = ArgumentRewriteStrategyFactory.GetRewriteStrategy (baseCallNode.GetOriginal (baseCallNode, CompilationId)!, Model, RhinoMocksSymbols);
       return baseCallNode.WithExpression (strategy.Rewrite (baseCallNode).Expression);
     }
   }

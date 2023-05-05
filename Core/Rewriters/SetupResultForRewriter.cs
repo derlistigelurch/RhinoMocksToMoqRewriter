@@ -24,7 +24,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
   {
     public override SyntaxNode? VisitExpressionStatement (ExpressionStatementSyntax node)
     {
-      var trackedNodes = node.TrackNodes (
+      var trackedNodes = node.Track (
           node.DescendantNodesAndSelf().Where (
               s => s.IsKind (SyntaxKind.SimpleMemberAccessExpression)
                    || s.IsKind (SyntaxKind.ExpressionStatement)),
@@ -38,7 +38,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
         return baseCallNode;
       }
 
-      var mockedExpression = baseCallNode.GetCurrentNode (baseCallNode, CompilationId)!.GetFirstArgument();
+      var mockedExpression = baseCallNode.GetCurrent (baseCallNode, CompilationId)!.GetFirstArgument();
       var stubExpression = MoqSyntaxFactory.MemberAccessExpression (mockedExpression.GetFirstIdentifierName(), MoqSyntaxFactory.StubIdentifierName);
       var stubArgumentList = MoqSyntaxFactory.SimpleArgumentList (
           MoqSyntaxFactory.SimpleLambdaExpression (
@@ -46,7 +46,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
                   mockedExpression.GetFirstIdentifierName(),
                   MoqSyntaxFactory.LambdaParameterIdentifierName)));
 
-      var currentSetupResultForInvocationExpression = baseCallNode.GetCurrentNode (setupResultForMemberAccessExpression, CompilationId)!.Parent!;
+      var currentSetupResultForInvocationExpression = baseCallNode.GetCurrent (setupResultForMemberAccessExpression, CompilationId)!.Parent!;
       var rewrittenExpression = baseCallNode.ReplaceNode (
           currentSetupResultForInvocationExpression!,
           MoqSyntaxFactory.InvocationExpression (stubExpression, stubArgumentList));
@@ -63,7 +63,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
       return baseCallNode.DescendantNodes()
           .Where (s => s.IsKind (SyntaxKind.SimpleMemberAccessExpression))
           .SingleOrDefault (
-              s => baseCallNode.GetOriginalNode (s, CompilationId) is { } originalNode
+              s => baseCallNode.GetOriginal (s, CompilationId) is { } originalNode
                    && Model.GetSymbolInfo (originalNode).Symbol?.OriginalDefinition is { } symbol
                    && RhinoMocksSymbols.SetupResultForSymbols.Contains (symbol, SymbolEqualityComparer.Default));
     }

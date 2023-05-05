@@ -23,19 +23,19 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
     private static readonly Dictionary<(SyntaxAnnotation Annotation, Guid CompilationId), SyntaxNode> s_originalNodes = new();
     private const string c_annotationId = "Id";
 
-    public static TRoot TrackNode<TRoot> (this TRoot root, SyntaxNode node, Guid compilationId)
+    public static TRoot Track<TRoot> (this TRoot root, SyntaxNode node, Guid compilationId)
         where TRoot : SyntaxNode
     {
-      return root.TrackNodes (new[] { node }, compilationId);
+      return root.Track (new[] { node }, compilationId);
     }
 
-    public static TRoot TrackNodes<TRoot> (this TRoot root, IEnumerable<SyntaxNode> nodes, Guid compilationId)
+    public static TRoot Track<TRoot> (this TRoot root, IEnumerable<SyntaxNode> nodes, Guid compilationId)
         where TRoot : SyntaxNode
     {
       var trackedNodes = Microsoft.CodeAnalysis.SyntaxNodeExtensions.TrackNodes (root, nodes);
       foreach (var node in nodes)
       {
-        var currentNode = trackedNodes.GetCurrentNode (node, compilationId)!;
+        var currentNode = trackedNodes.GetCurrent (node, compilationId)!;
         var annotations = currentNode.GetAnnotations (c_annotationId).ToList();
         var trackedNode = annotations.Select (a => s_originalNodes.GetValueOrDefault ((a, compilationId))).FirstOrDefault();
 
@@ -55,7 +55,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
       throw new NotSupportedException();
     }
 
-    public static T? GetOriginalNode<T> (this SyntaxNode root, T trackedNode, Guid compilationId)
+    public static T? GetOriginal<T> (this SyntaxNode root, T trackedNode, Guid compilationId)
         where T : SyntaxNode
     {
       var annotation = trackedNode.GetAnnotations (c_annotationId).FirstOrDefault();
@@ -67,7 +67,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
       return null;
     }
 
-    public static T? GetCurrentNode<T> (this SyntaxNode root, T trackedNode, Guid compilationId)
+    public static T? GetCurrent<T> (this SyntaxNode root, T trackedNode, Guid compilationId)
         where T : SyntaxNode
     {
       var currentNode = Microsoft.CodeAnalysis.SyntaxNodeExtensions.GetCurrentNode (root, trackedNode);
@@ -76,7 +76,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
         return currentNode;
       }
 
-      var originalNode = root.GetOriginalNode (trackedNode, compilationId);
+      var originalNode = root.GetOriginal (trackedNode, compilationId);
       if (originalNode == null)
       {
         return null;

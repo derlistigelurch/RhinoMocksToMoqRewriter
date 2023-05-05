@@ -33,7 +33,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
         return node;
       }
 
-      var trackedNodes = node.TrackNodes (node.DescendantNodesAndSelf(), CompilationId)!;
+      var trackedNodes = node.Track (node.DescendantNodesAndSelf(), CompilationId)!;
       trackedNodes = ReplaceRhinoMocksVerifyExpressions (trackedNodes, rhinoMocksVerifyExpressionStatements, annotatedSetupExpressionStatements);
 
       return trackedNodes;
@@ -46,7 +46,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
     {
       foreach (var expressionStatement in rhinoMocksVerifyExpressionStatements)
       {
-        var currentNode = node.GetCurrentNode (expressionStatement, CompilationId);
+        var currentNode = node.GetCurrent (expressionStatement, CompilationId);
         var replacementNodes = ComputeReplacementNode (expressionStatement).ToList();
 
         if (NeedsTimesExpression (replacementNodes, annotatedSetupExpressionStatements))

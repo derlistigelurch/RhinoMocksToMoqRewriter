@@ -40,7 +40,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
       var baseCallNode = (ExpressionStatementSyntax) base.VisitExpressionStatement (trackedNodes)!;
 
-      var originalNode = baseCallNode.GetOriginalNode (baseCallNode, CompilationId)!;
+      var originalNode = baseCallNode.GetOriginal (baseCallNode, CompilationId)!;
       var symbol = Model.GetSymbolInfo (originalNode.Expression).Symbol as IMethodSymbol;
       if (!RhinoMocksSymbols.AllIMethodOptionsSymbols.Contains (symbol?.OriginalDefinition, SymbolEqualityComparer.Default)
           && !RhinoMocksSymbols.ExpectSymbols.Contains (symbol?.ReducedFrom ?? symbol?.OriginalDefinition, SymbolEqualityComparer.Default)
@@ -82,7 +82,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
     private bool IsAssertWasCalledOrAssertWasNotCalledExpressionStatement (ExpressionStatementSyntax node)
     {
-      var originalNode = node.GetOriginalNode (node, CompilationId)!;
+      var originalNode = node.GetOriginal (node, CompilationId)!;
       var symbol = Model.GetSymbolInfo (originalNode.Expression).Symbol as IMethodSymbol;
       return RhinoMocksSymbols.AssertWasCalledSymbols.Contains (symbol?.ReducedFrom ?? symbol?.OriginalDefinition)
              || RhinoMocksSymbols.AssertWasNotCalledSymbols.Contains (symbol?.ReducedFrom ?? symbol?.OriginalDefinition);
@@ -99,7 +99,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
       var argumentlist = ((InvocationExpressionSyntax) invocationExpression.GetLambdaExpression().Body).ArgumentList.Arguments.Skip (1).ToList();
       argumentlist.Insert (1, MoqSyntaxFactory.SimpleArgument (MoqSyntaxFactory.TrueLiteralExpression));
 
-      invocationExpression = invocationExpression.GetCurrentNode (invocationExpression, CompilationId)!.ReplaceNode (
+      invocationExpression = invocationExpression.GetCurrent (invocationExpression, CompilationId)!.ReplaceNode (
           invocationExpression.GetLambdaExpression().Parent?.Parent!,
           _formatter.Format (MoqSyntaxFactory.SimpleArgumentList (argumentlist)));
 
@@ -124,7 +124,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
     private SyntaxNode? ConvertInvocationExpression (InvocationExpressionSyntax baseCallNode)
     {
-      var symbol = Model.GetSymbolInfo (baseCallNode.GetOriginalNode (baseCallNode, CompilationId)!).Symbol as IMethodSymbol;
+      var symbol = Model.GetSymbolInfo (baseCallNode.GetOriginal (baseCallNode, CompilationId)!).Symbol as IMethodSymbol;
       return symbol switch
       {
           _ when RhinoMocksSymbols.AllIRepeatSymbols.Contains (symbol?.OriginalDefinition, SymbolEqualityComparer.Default)
@@ -143,7 +143,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
     private IdentifierNameSyntax RewriteSetup (MemberAccessExpressionSyntax node)
     {
-      var originalNode = node.GetOriginalNode (node, CompilationId)!;
+      var originalNode = node.GetOriginal (node, CompilationId)!;
       var setupInvocationExpression = (InvocationExpressionSyntax) originalNode.Ancestors().First (s => s.IsKind (SyntaxKind.InvocationExpression));
       return setupInvocationExpression.ArgumentList.GetLambdaExpressionOrDefault()?.Body is AssignmentExpressionSyntax
           ? MoqSyntaxFactory.SetupSetIdentifierName
@@ -168,7 +168,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
     private InvocationExpressionSyntax RewriteCallback (InvocationExpressionSyntax node)
     {
-      var originalNode = node.GetOriginalNode (node, CompilationId)!;
+      var originalNode = node.GetOriginal (node, CompilationId)!;
       var argument = GetFirstArgumentFromExpectOrStubMethod (originalNode);
 
       if (argument is null)
@@ -250,7 +250,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
     private SyntaxNode? ConvertMemberAccessExpression (MemberAccessExpressionSyntax node)
     {
-      var symbol = Model.GetSymbolInfo (node.GetOriginalNode (node, CompilationId)!.Name).Symbol;
+      var symbol = Model.GetSymbolInfo (node.GetOriginal (node, CompilationId)!.Name).Symbol;
       if (symbol is not IMethodSymbol methodSymbol)
       {
         return RhinoMocksSymbols.RhinoMocksIRepeatSymbol.Equals (symbol?.OriginalDefinition, SymbolEqualityComparer.Default)
@@ -340,7 +340,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
     private T TrackDescendantNodes<T> (T node)
         where T : SyntaxNode
     {
-      return node.TrackNodes (
+      return node.Track (
           node.DescendantNodesAndSelf().Where (
               s => s.IsKind (SyntaxKind.InvocationExpression) || s.IsKind (SyntaxKind.ExpressionStatement) || s.IsKind (SyntaxKind.SimpleMemberAccessExpression)),
           CompilationId);

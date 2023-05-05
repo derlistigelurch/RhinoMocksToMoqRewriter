@@ -29,7 +29,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
       MethodDeclarationSyntax treeWithTrackedNodes;
       try
       {
-        treeWithTrackedNodes = node.TrackNodes (node.DescendantNodesAndSelf(), CompilationId);
+        treeWithTrackedNodes = node.Track (node.DescendantNodesAndSelf(), CompilationId);
       }
       catch (Exception)
       {
@@ -43,7 +43,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
       for (var i = 0; i < usingStatements.Count; i++)
       {
         var usingStatement = usingStatements[i];
-        var trackedUsingStatement = treeWithTrackedNodes.GetCurrentNode (usingStatement, CompilationId);
+        var trackedUsingStatement = treeWithTrackedNodes.GetCurrent (usingStatement, CompilationId);
         int? index = usingStatements.Count == 1 ? null : i + 1;
         var statements = ReplaceExpressionStatements (((BlockSyntax) usingStatement.Statement).Statements, index);
 
@@ -126,7 +126,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
     private IEnumerable<UsingStatementSyntax> GetRhinoMocksOrderedUsingStatements (MethodDeclarationSyntax node)
     {
       return node
-          .GetOriginalNode(node, CompilationId)!
+          .GetOriginal(node, CompilationId)!
           .DescendantNodes()
           .Where (s => s.IsKind (SyntaxKind.UsingStatement))
           .Select (s => (UsingStatementSyntax) s)

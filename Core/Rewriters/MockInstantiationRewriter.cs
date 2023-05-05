@@ -31,7 +31,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
     public override SyntaxNode? VisitLocalDeclarationStatement (LocalDeclarationStatementSyntax node)
     {
-      var trackedNodes = node.TrackNodes (node.DescendantNodesAndSelf().Where (s => s.IsKind (SyntaxKind.LocalDeclarationStatement) || s.IsKind (SyntaxKind.InvocationExpression)), CompilationId);
+      var trackedNodes = node.Track (node.DescendantNodesAndSelf().Where (s => s.IsKind (SyntaxKind.LocalDeclarationStatement) || s.IsKind (SyntaxKind.InvocationExpression)), CompilationId);
       var baseCallNode = (LocalDeclarationStatementSyntax) base.VisitLocalDeclarationStatement (trackedNodes)!;
 
       if (IsRhinoMocksLocalDeclarationWithoutVarType (baseCallNode))
@@ -49,7 +49,7 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
     private bool IsRhinoMocksLocalDeclarationWithoutVarType (LocalDeclarationStatementSyntax node)
     {
-      return node.GetOriginalNode (node, CompilationId)!.Declaration.Variables
+      return node.GetOriginal (node, CompilationId)!.Declaration.Variables
                  .Any (
                      s => s.Initializer is { } initializer
                           && Model.GetSymbolInfo (initializer.Value).Symbol?.ContainingType is { } symbol
@@ -59,10 +59,10 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
     public override SyntaxNode? VisitInvocationExpression (InvocationExpressionSyntax node)
     {
-      var trackedNodes = node.TrackNodes (node.DescendantNodesAndSelf().Where (s => s.IsKind (SyntaxKind.LocalDeclarationStatement) || s.IsKind (SyntaxKind.InvocationExpression)), CompilationId);
+      var trackedNodes = node.Track (node.DescendantNodesAndSelf().Where (s => s.IsKind (SyntaxKind.LocalDeclarationStatement) || s.IsKind (SyntaxKind.InvocationExpression)), CompilationId);
       var baseCallNode = (InvocationExpressionSyntax) base.VisitInvocationExpression (trackedNodes)!;
 
-      var originalNode = baseCallNode.GetOriginalNode (baseCallNode, CompilationId)!;
+      var originalNode = baseCallNode.GetOriginal (baseCallNode, CompilationId)!;
       var methodSymbol = (Model.GetSymbolInfo (originalNode).Symbol as IMethodSymbol)?.OriginalDefinition;
       if (methodSymbol == null)
       {
