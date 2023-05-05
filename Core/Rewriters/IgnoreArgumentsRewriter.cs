@@ -110,14 +110,13 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
             {
                 return argumentList;
             }
-
-            var methodSymbol = Model.GetSymbolInfo(invocationExpression).Symbol as IMethodSymbol;
-            if (methodSymbol == null)
+            
+            if (!Model.TryGetSymbolAs<IMethodSymbol>(invocationExpression, out var methodSymbol))
             {
                 return argumentList;
             }
 
-            var methodParameterTypeSymbols = methodSymbol.Parameters.Select(p => p.Type).ToArray();
+            var methodParameterTypeSymbols = methodSymbol!.Parameters.Select(p => p.Type).ToArray();
             var isInArguments = methodParameterTypeSymbols.Select(
                 typeSymbol => MoqSyntaxFactory.IsAnyArgument(
                     MoqSyntaxFactory.SimpleTypeArgumentList(TypeSymbolToTypeSyntaxConverter.ConvertTypeSyntaxNodes(typeSymbol, Generator))));
