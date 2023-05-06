@@ -18,6 +18,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using RhinoMocksToMoqRewriter.Core.Extensions;
+using RhinoMocksToMoqRewriter.Core.Rewriters.Strategies.ObjectRewriterStrategies;
 
 namespace RhinoMocksToMoqRewriter.Core.Rewriters
 {
@@ -35,29 +36,41 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
         {
             var symbol = Model.GetSymbolInfo(node.GetOriginal(node, CompilationId)!).Symbol?.OriginalDefinition;
 
-            if (node is ExpressionStatementSyntax expressionStatement)
+            return node switch
             {
-                return expressionStatement.WithExpression((ExpressionSyntax)RewriteExpectCall(expressionStatement.Expression));
+                ExpressionStatementSyntax expressionStatement
+                    => RewriteExpressionStatement(expressionStatement),
+                MemberAccessExpressionSyntax rhinoMocksRepeatMemberAccessExpression when GetAllSimpleRhinoMocksSymbols().Contains(symbol, SymbolEqualityComparer.Default)
+                    => RewriteRhinoMocksRepeatMemberAccessExpression(rhinoMocksRepeatMemberAccessExpression),
+                InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax rhinoMocksMemberAccessExpression } rhinoMocksInvocationExpression
+                    => RewriteRhinoMocksInvocationExpression(rhinoMocksMemberAccessExpression, rhinoMocksInvocationExpression, symbol),
+                _ => node
+            };
+        }
+
+        private SyntaxNode RewriteExpressionStatement(ExpressionStatementSyntax expressionStatement)
+        {
+            var rewrittenExpression = (ExpressionSyntax)RewriteExpectCall(expressionStatement.Expression);
+            return expressionStatement.WithExpression(rewrittenExpression);
+        }
+
+        private SyntaxNode RewriteRhinoMocksRepeatMemberAccessExpression(MemberAccessExpressionSyntax rhinoMocksRepeatMemberAccessExpression)
+        {
+            var rewrittenExpression = (ExpressionSyntax)RewriteExpectCall(rhinoMocksRepeatMemberAccessExpression.Expression);
+            return rhinoMocksRepeatMemberAccessExpression.WithExpression(rewrittenExpression!);
+        }
+
+        private SyntaxNode RewriteRhinoMocksInvocationExpression(
+            MemberAccessExpressionSyntax rhinoMocksMemberAccessExpression,
+            InvocationExpressionSyntax rhinoMocksInvocationExpression,
+            ISymbol? symbol)
+        {
+            if (symbol is not null && RhinoMocksSymbols.ExpectCallSymbols.Contains(symbol, SymbolEqualityComparer.Default))
+            {
+                return ConvertExpectExpression(rhinoMocksInvocationExpression).WithLeadingAndTrailingTriviaOfNode(rhinoMocksMemberAccessExpression);
             }
 
-            if (node is MemberAccessExpressionSyntax rhinoMocksRepeatMemberAccessExpression && GetAllSimpleRhinoMocksSymbols().Contains(symbol, SymbolEqualityComparer.Default))
-            {
-                return rhinoMocksRepeatMemberAccessExpression.ReplaceNode(
-                    node.GetCurrent(rhinoMocksRepeatMemberAccessExpression.Expression, CompilationId)!,
-                    (ExpressionSyntax)RewriteExpectCall(rhinoMocksRepeatMemberAccessExpression.Expression));
-            }
-
-            if (node is not InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax rhinoMocksMemberAccessExpression } rhinoMocksInvocationExpression)
-            {
-                return node;
-            }
-
-            if (RhinoMocksSymbols.ExpectCallSymbols.Contains(symbol, SymbolEqualityComparer.Default))
-            {
-                return ConvertExpectExpression(rhinoMocksInvocationExpression).WithLeadingAndTrailingTriviaOfNode(node);
-            }
-
-            if (RhinoMocksSymbols.ConstraintsSymbols.Contains(symbol, SymbolEqualityComparer.Default))
+            if (symbol is not null && RhinoMocksSymbols.ConstraintsSymbols.Contains(symbol, SymbolEqualityComparer.Default))
             {
                 var rewrittenContainedExpression = RewriteExpectCall(rhinoMocksMemberAccessExpression.Expression);
                 return ConvertMockedExpression(rewrittenContainedExpression, rhinoMocksMemberAccessExpression, rhinoMocksInvocationExpression);
@@ -65,12 +78,11 @@ namespace RhinoMocksToMoqRewriter.Core.Rewriters
 
             if (GetAllSimpleRhinoMocksSymbols().Contains(symbol, SymbolEqualityComparer.Default))
             {
-                return rhinoMocksInvocationExpression.ReplaceNode(
-                    node.GetCurrent(rhinoMocksMemberAccessExpression.Expression, CompilationId)!,
-                    (ExpressionSyntax)RewriteExpectCall(rhinoMocksMemberAccessExpression.Expression));
+                var rewrittenExpression = RewriteExpectCall(rhinoMocksMemberAccessExpression.Expression) as ExpressionSyntax;
+                return rhinoMocksInvocationExpression.ReplaceNode(rhinoMocksMemberAccessExpression.Expression, rewrittenExpression!);
             }
 
-            return node;
+            return rhinoMocksInvocationExpression;
         }
 
         private SyntaxNode ConvertMockedExpression(
