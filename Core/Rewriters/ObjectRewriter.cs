@@ -16,6 +16,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using RhinoMocksToMoqRewriter.Core.Rewriters.Strategies;
 using RhinoMocksToMoqRewriter.Core.Rewriters.Strategies.ObjectRewriterStrategies;
 
 namespace RhinoMocksToMoqRewriter.Core.Rewriters

@@ -11,13 +11,30 @@
 // WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using System;
 using Microsoft.CodeAnalysis;
 using RhinoMocksToMoqRewriter.Core.Wrapper;
 
-namespace RhinoMocksToMoqRewriter.Core.Rewriters.Strategies
+namespace RhinoMocksToMoqRewriter.Core.Rewriters.Strategies.MockInstatiantionRewriterStrategies
 {
-    public interface IRewriteStrategy
+    public abstract class BaseMockInstantiationRewriteStrategy : IRewriteStrategy
     {
-        bool TryRewrite(SyntaxNodePair nodes, out SyntaxNode? rewrittenNode);
+        protected Guid CompilationId { get; }
+
+        protected SemanticModel Model { get; }
+        
+        protected RhinoMocksSymbols RhinoMocksSymbols { get; }
+
+        protected MoqSymbols MoqSymbols { get; }
+
+        protected BaseMockInstantiationRewriteStrategy(Guid compilationId, SemanticModel model, MoqSymbols moq, RhinoMocksSymbols rhinoMocks)
+        {
+            CompilationId = compilationId;
+            Model = model;
+            RhinoMocksSymbols = rhinoMocks;
+            MoqSymbols = moq;
+        }
+
+        public abstract bool TryRewrite(SyntaxNodePair nodes, out SyntaxNode? rewrittenNode);
     }
 }

@@ -17,112 +17,51 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using RhinoMocksToMoqRewriter.Core.Extensions;
+using RhinoMocksToMoqRewriter.Core.Rewriters.Strategies;
+using RhinoMocksToMoqRewriter.Core.Rewriters.Strategies.MockInstatiantionRewriterStrategies;
+using RhinoMocksToMoqRewriter.Core.Rewriters.Strategies.ObjectRewriterStrategies;
 
 namespace RhinoMocksToMoqRewriter.Core.Rewriters
 {
     public class MockInstantiationRewriter : RewriterBase
     {
         private readonly IFormatter _formatter;
+        private readonly Lazy<IRewriteStrategy> _localDeclarationRewriteStrategy;
+        private readonly Lazy<IRewriteStrategy> _invocationExpressionRewriteStrategy;
 
         public MockInstantiationRewriter(IFormatter formatter)
         {
             _formatter = formatter;
+
+            _localDeclarationRewriteStrategy = new(
+                () => new LocalDeclarationStatementRewriteStrategy(CompilationId, Model, MoqSymbols, RhinoMocksSymbols));
+            _invocationExpressionRewriteStrategy = new(
+                () => new InvocationExpressionRewriteStrategy(CompilationId, Model, MoqSymbols, RhinoMocksSymbols));
         }
 
         public override SyntaxNode? VisitLocalDeclarationStatement(LocalDeclarationStatementSyntax node)
         {
-            var trackedNodes = node.Track(node.DescendantNodesAndSelf().Where(s => s.IsKind(SyntaxKind.LocalDeclarationStatement) || s.IsKind(SyntaxKind.InvocationExpression)),
+            var trackedNodes = node.Track(
+                node.DescendantNodesAndSelf().Where(s => s.IsKind(SyntaxKind.LocalDeclarationStatement) || s.IsKind(SyntaxKind.InvocationExpression)),
                 CompilationId);
             var baseCallNode = (LocalDeclarationStatementSyntax)base.VisitLocalDeclarationStatement(trackedNodes)!;
 
-            if (IsRhinoMocksLocalDeclarationWithoutVarType(baseCallNode))
-            {
-                return baseCallNode.WithDeclaration(
-                    baseCallNode.Declaration
-                        .WithType(
-                            MoqSyntaxFactory.VarType
-                                .WithLeadingTrivia(baseCallNode.Declaration.Type.GetLeadingTrivia())
-                                .WithTrailingTrivia(baseCallNode.Declaration.Type.GetTrailingTrivia())));
-            }
-
-            return baseCallNode;
-        }
-
-        private bool IsRhinoMocksLocalDeclarationWithoutVarType(LocalDeclarationStatementSyntax node)
-        {
-            return node.GetOriginal(node, CompilationId)!.Declaration.Variables
-                       .Any(
-                           s => s.Initializer is { } initializer
-                                && Model.GetSymbolInfo(initializer.Value).Symbol?.ContainingType is { } symbol
-                                && RhinoMocksSymbols.RhinoMocksMockRepositorySymbol.Equals(symbol, SymbolEqualityComparer.Default))
-                   && !node.Declaration.Type.IsEquivalentTo(MoqSyntaxFactory.VarType, false);
+            return _localDeclarationRewriteStrategy.Value.TryRewrite((node, baseCallNode, trackedNodes), out var rewrittenNode)
+                ? rewrittenNode
+                : baseCallNode;
         }
 
         public override SyntaxNode? VisitInvocationExpression(InvocationExpressionSyntax node)
         {
-            var trackedNodes = node.Track(node.DescendantNodesAndSelf().Where(s => s.IsKind(SyntaxKind.LocalDeclarationStatement) || s.IsKind(SyntaxKind.InvocationExpression)),
+            var trackedNodes = node.Track(
+                node.DescendantNodesAndSelf().Where(s => s.IsKind(SyntaxKind.LocalDeclarationStatement) || s.IsKind(SyntaxKind.InvocationExpression)),
                 CompilationId);
             var baseCallNode = (InvocationExpressionSyntax)base.VisitInvocationExpression(trackedNodes)!;
-
             var originalNode = baseCallNode.GetOriginal(baseCallNode, CompilationId)!;
-            var methodSymbol = (Model.GetSymbolInfo(originalNode).Symbol as IMethodSymbol)?.OriginalDefinition;
-            if (methodSymbol == null)
-            {
-                return baseCallNode;
-            }
 
-            var rhinoMocksMethodGenericName = baseCallNode.GetFirstGenericNameOrDefault();
-            (TypeArgumentListSyntax? moqMockTypeArgumentList, ArgumentListSyntax? moqMockArgumentSyntaxList) = rhinoMocksMethodGenericName == null
-                ? GetDataFromMockWithoutGenericName(baseCallNode)
-                : GetDataFromMockWithGenericName(baseCallNode, rhinoMocksMethodGenericName);
-
-            if (moqMockTypeArgumentList == null || moqMockArgumentSyntaxList == null)
-            {
-                return baseCallNode;
-            }
-
-            return methodSymbol switch
-            {
-                _ when RhinoMocksSymbols.AllGenerateMockAndStubSymbols.Contains(methodSymbol, SymbolEqualityComparer.Default)
-                    => _formatter.Format(MoqSyntaxFactory.MockCreationExpression(moqMockTypeArgumentList, moqMockArgumentSyntaxList))
-                        .WithLeadingAndTrailingTriviaOfNode(baseCallNode),
-                _ when RhinoMocksSymbols.AllPartialMockSymbols.Contains(methodSymbol, SymbolEqualityComparer.Default)
-                    => _formatter.Format(MoqSyntaxFactory.PartialMockCreationExpression(moqMockTypeArgumentList, moqMockArgumentSyntaxList))
-                        .WithLeadingAndTrailingTriviaOfNode(baseCallNode),
-                _ when RhinoMocksSymbols.AllStrictMockSymbols.Contains(methodSymbol, SymbolEqualityComparer.Default)
-                    => _formatter.Format(MoqSyntaxFactory.StrictMockCreationExpression(moqMockTypeArgumentList, moqMockArgumentSyntaxList))
-                        .WithLeadingAndTrailingTriviaOfNode(baseCallNode),
-                _ => baseCallNode
-            };
-        }
-
-        private static (TypeArgumentListSyntax, ArgumentListSyntax) GetDataFromMockWithGenericName(
-            InvocationExpressionSyntax baseCallNode,
-            GenericNameSyntax rhinoMocksMethodGenericName)
-        {
-            var moqMockTypeArgumentList = SyntaxFactory.TypeArgumentList().AddArguments(rhinoMocksMethodGenericName.TypeArgumentList.Arguments.First());
-            var moqMockArgumentSyntaxList = baseCallNode.ArgumentList;
-
-            return (moqMockTypeArgumentList, moqMockArgumentSyntaxList);
-        }
-
-        private static (TypeArgumentListSyntax?, ArgumentListSyntax?) GetDataFromMockWithoutGenericName(InvocationExpressionSyntax baseCallNode)
-        {
-            if (baseCallNode.ArgumentList.GetFirstArgumentOrDefault() is not { } typeArgument)
-            {
-                return (null, null);
-            }
-
-            var typeArgumentList = typeArgument.Expression switch
-            {
-                TypeOfExpressionSyntax { Type: { } type } => MoqSyntaxFactory.TypeArgumentList(type),
-                TypeSyntax type => MoqSyntaxFactory.TypeArgumentList(type),
-                _ => null
-            };
-
-            var argumentList = baseCallNode.ArgumentList.WithArguments(SyntaxFactory.SeparatedList(baseCallNode.ArgumentList.Arguments.Skip(1)));
-
-            return (typeArgumentList, argumentList);
+            return _invocationExpressionRewriteStrategy.Value.TryRewrite((originalNode, baseCallNode, trackedNodes), out var rewrittenNode)
+                ? _formatter.Format(rewrittenNode!).WithLeadingAndTrailingTriviaOfNode(baseCallNode)
+                : baseCallNode;
         }
     }
 }
