@@ -11,26 +11,29 @@
 // WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using Microsoft.CodeAnalysis;
+
 namespace RhinoMocksToMoqRewriter.Core.Wrapper
 {
-    public class SyntaxNodePosition
+    public class TriviaCollection
     {
-        private readonly int? _index;
+        public SyntaxTriviaList? Parent { get; }
 
-        public SyntaxNodePosition(int index)
+        public string ParentWithOuNewLine { get; }
+
+        public SyntaxTriviaList MemberAccessWithoutNewLine { get; }
+
+        public TriviaCollection(SyntaxTriviaList? parent, string parentWithOuNewLine, SyntaxTriviaList memberAccessWithoutNewLine)
         {
-            _index = index;
-        }
-        
-        public SyntaxNodePosition(int? index)
-        {
-            _index = index;
+            Parent = parent;
+            ParentWithOuNewLine = parentWithOuNewLine;
+            MemberAccessWithoutNewLine = memberAccessWithoutNewLine;
         }
 
-        public static implicit operator SyntaxNodePosition(int index) => new(index);
-        
-        public static implicit operator SyntaxNodePosition(int? index) => new(index);
-        public static implicit operator int(SyntaxNodePosition position) => position._index ?? 0;
-        public static implicit operator int?(SyntaxNodePosition position) => position._index;
+        public static implicit operator TriviaCollection((SyntaxTriviaList? parent, string parentWithoutNewLine, SyntaxTriviaList memberAccessWithoutNewLine) trivia)
+            => new(trivia.parent, trivia.parentWithoutNewLine, trivia.memberAccessWithoutNewLine);
+
+        public static implicit operator (SyntaxTriviaList?, string, SyntaxTriviaList)(TriviaCollection trivia)
+            => (trivia.Parent, trivia.ParentWithOuNewLine, trivia.MemberAccessWithoutNewLine);
     }
 }
